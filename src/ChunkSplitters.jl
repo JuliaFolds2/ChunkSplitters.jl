@@ -6,7 +6,37 @@ export splitter
 
 """
 
-splitter(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+    splitter(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
+
+This function returns an iterable object that will split the *indices* of `array` into
+to `nchunks` chunks. `type` can be `:batch` or `:scatter`. It can be used to directly iterate
+over the chunks of a collection in a multi-threaded manner.
+
+## Eample
+
+```julia-repl
+julia> using ChunkSplitters 
+
+julia> x = rand(7);
+
+julia> Threads.@threads for i in splitter(x, 3, :batch)
+    @show Threads.threadid(), collect(i)
+end
+(Threads.threadid(), collect(i)) = (6, [1, 2, 3])
+(Threads.threadid(), collect(i)) = (8, [4, 5])
+(Threads.threadid(), collect(i)) = (7, [6, 7])
+
+julia> Threads.@threads for i in splitter(x, 3, :scatter)
+    @show Threads.threadid(), collect(i)
+end
+(Threads.threadid(), collect(i)) = (2, [1, 4, 7])
+(Threads.threadid(), collect(i)) = (11, [2, 5])
+(Threads.threadid(), collect(i)) = (3, [3, 6])
+```
+
+-----------------
+
+    splitter(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 
 Function that returns a range of indexes of `array`, given the number of chunks in
 which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
@@ -14,7 +44,7 @@ which the array is to be split, `nchunks`, and the current chunk number `ichunk`
 If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range
 is scattered over the array. 
 
-## Examples
+## Example
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `type = :batch` option):
@@ -48,6 +78,50 @@ julia> splitter(x, 3, 3, :scatter)
 ```
 
 """
+function splitter end
+
+# Current splitter types
+const splitter_types = (:batch, :scatter)
+
+# Structure that carries the splitter data
+struct Splitter{I,N,T}
+    x::I
+    nchunks::Int
+end
+
+# Constructor for the splitter
+function splitter(x::AbstractArray, nchunks::Int, type=:batch)
+    nchunks >= 1 || throw(ArgumentError("nchunks must be >= 1"))
+    (type in splitter_types) || throw(ArgumentError("type must be one of $splitter_types"))
+    Splitter{typeof(x),nchunks,type}(x, nchunks)
+end
+
+import Base: length, eltype
+length(::Splitter{I,N}) where {I,N} = N
+eltype(::Splitter) = UnitRange{Int}
+
+import Base: firstindex, lastindex, getindex
+firstindex(::Splitter) = 1
+lastindex(::Splitter{I,N}) where {I,N} = N
+getindex(it::Splitter{I,N,T}, i::Int) where {I,N,T} = splitter(it.x, i, it.nchunks, T)
+
+#
+# Iteration of the splitter
+#
+import Base: iterate
+function iterate(it::Splitter{I,N,T}, state=nothing; type=:batch) where {I,N,T}
+    if isnothing(state)
+        return (splitter(it.x, 1, it.nchunks, T), 1)
+    elseif state < it.nchunks
+        return (splitter(it.x, state + 1, it.nchunks, T), state + 1)
+    else
+        return nothing
+    end
+end
+
+#
+# This is the lower level function that receives `ichunk` as a parameter
+#
 function splitter(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
     return _splitter(array, ichunk, nchunks, Val(type))
