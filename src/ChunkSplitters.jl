@@ -67,7 +67,7 @@ getindex(it::Splitter{I,N,T}, i::Int) where {I,N,T} = (splitter(it.x, i, it.nchu
 # Iteration of the splitter
 #
 import Base: iterate
-function iterate(it::Splitter{I,N,T}, state=nothing; type=:batch) where {I,N,T}
+function iterate(it::Splitter{I,N,T}, state=nothing) where {I,N,T}
     if isnothing(state)
         return ((splitter(it.x, 1, it.nchunks, T), 1), 1)
     elseif state < it.nchunks
