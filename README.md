@@ -53,7 +53,7 @@ julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
            Threads.@threads for (xrange, ichunk) in chunks(x, nchunks)
                for i in xrange
                   s[ichunk] += f(x[i])
-              end
+               end
            end
            return sum(s)
        end
