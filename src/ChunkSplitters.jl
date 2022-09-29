@@ -63,6 +63,9 @@ firstindex(::Chunk) = 1
 lastindex(::Chunk{I,N}) where {I,N} = N
 getindex(it::Chunk{I,N,T}, i::Int) where {I,N,T} = (chunks(it.x, i, it.nchunks, T), i)
 
+import Base: collect
+collect(it::Chunk{I,N,T}) where {I,N,T} = [ (chunks(it.x, i, it.nchunks, T), i) for i in 1:N ]
+
 #
 # Iteration of the chunks
 #
@@ -181,6 +184,7 @@ end # module Testing
 
 @testitem ":scatter" begin
     using ChunkSplitters
+    using OffsetArrays
     import ChunkSplitters.Testing: test_chunks, test_sum
     @test test_chunks(; array_length=1, nchunks=1, type=:scatter, result=[1:1])
     @test test_chunks(; array_length=2, nchunks=1, type=:scatter, result=[1:2])
@@ -197,10 +201,13 @@ end # module Testing
     @test test_sum(; array_length=12, nchunks=4, type=:scatter)
     @test test_sum(; array_length=15, nchunks=4, type=:scatter)
     @test test_sum(; array_length=117, nchunks=4, type=:scatter)
+    x = OffsetArray(1:7, -1:5)
+    @test collect.(getindex.(collect(chunks(x,3,:scatter)),1)) == [[-1,2,5],[0,3],[1,4]]
 end
 
 @testitem ":batch" begin
     using ChunkSplitters
+    using OffsetArrays
     import ChunkSplitters.Testing: test_chunks, test_sum
     @test test_chunks(; array_length=1, nchunks=1, type=:batch, result=[1:1])
     @test test_chunks(; array_length=2, nchunks=1, type=:batch, result=[1:2])
@@ -217,6 +224,8 @@ end
     @test test_sum(; array_length=12, nchunks=4, type=:batch)
     @test test_sum(; array_length=15, nchunks=4, type=:batch)
     @test test_sum(; array_length=117, nchunks=4, type=:batch)
+    x = OffsetArray(1:7, -1:5)
+    @test collect.(getindex.(collect(chunks(x,3,:batch)),1)) == [[-1,0,1],[2,3],[4,5]]
 end
 
 end # module ChunkSplitters
