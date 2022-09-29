@@ -2,11 +2,11 @@ module ChunkSplitters
 
 using TestItems
 
-export splitter
+export chunks
 
 """
 
-    splitter(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
+    chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
 
 This function returns an iterable object that will split the *indices* of `array` into
 to `nchunks` chunks. `type` can be `:batch` or `:scatter`. It can be used to directly iterate
@@ -19,14 +19,14 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> Threads.@threads for i in splitter(x, 3, :batch)
+julia> Threads.@threads for i in chunks(x, 3, :batch)
     @show Threads.threadid(), collect(i)
 end
 (Threads.threadid(), collect(i)) = (6, [1, 2, 3])
 (Threads.threadid(), collect(i)) = (8, [4, 5])
 (Threads.threadid(), collect(i)) = (7, [6, 7])
 
-julia> Threads.@threads for i in splitter(x, 3, :scatter)
+julia> Threads.@threads for i in chunks(x, 3, :scatter)
     @show Threads.threadid(), collect(i)
 end
 (Threads.threadid(), collect(i)) = (2, [1, 4, 7])
@@ -36,42 +36,42 @@ end
 
 
 """
-function splitter end
+function chunks end
 
-# Current splitter types
-const splitter_types = (:batch, :scatter)
+# Current chunks types
+const chunks_types = (:batch, :scatter)
 
-# Structure that carries the splitter data
-struct Splitter{I,N,T}
+# Structure that carries the chunks data
+struct Chunk{I,N,T}
     x::I
     nchunks::Int
 end
 
-# Constructor for the splitter
-function splitter(x::AbstractArray, nchunks::Int, type=:batch)
+# Constructor for the chunks
+function chunks(x::AbstractArray, nchunks::Int, type=:batch)
     nchunks >= 1 || throw(ArgumentError("nchunks must be >= 1"))
-    (type in splitter_types) || throw(ArgumentError("type must be one of $splitter_types"))
-    Splitter{typeof(x),nchunks,type}(x, nchunks)
+    (type in chunks_types) || throw(ArgumentError("type must be one of $chunks_types"))
+    Chunk{typeof(x),nchunks,type}(x, nchunks)
 end
 
 import Base: length, eltype
-length(::Splitter{I,N}) where {I,N} = N
-eltype(::Splitter) = UnitRange{Int}
+length(::Chunk{I,N}) where {I,N} = N
+eltype(::Chunk) = UnitRange{Int}
 
 import Base: firstindex, lastindex, getindex
-firstindex(::Splitter) = 1
-lastindex(::Splitter{I,N}) where {I,N} = N
-getindex(it::Splitter{I,N,T}, i::Int) where {I,N,T} = (splitter(it.x, i, it.nchunks, T), i)
+firstindex(::Chunk) = 1
+lastindex(::Chunk{I,N}) where {I,N} = N
+getindex(it::Chunk{I,N,T}, i::Int) where {I,N,T} = (chunks(it.x, i, it.nchunks, T), i)
 
 #
-# Iteration of the splitter
+# Iteration of the chunks
 #
 import Base: iterate
-function iterate(it::Splitter{I,N,T}, state=nothing) where {I,N,T}
+function iterate(it::Chunk{I,N,T}, state=nothing) where {I,N,T}
     if isnothing(state)
-        return ((splitter(it.x, 1, it.nchunks, T), 1), 1)
+        return ((chunks(it.x, 1, it.nchunks, T), 1), 1)
     elseif state < it.nchunks
-        return ((splitter(it.x, state + 1, it.nchunks, T), state + 1), state + 1)
+        return ((chunks(it.x, state + 1, it.nchunks, T), state + 1), state + 1)
     else
         return nothing
     end
@@ -81,7 +81,7 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    splitter(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+    chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 
 # Extended help
 
@@ -101,38 +101,38 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> splitter(x, 1, 3)
+julia> chunks(x, 1, 3)
 1:3
 
-julia> splitter(x, 2, 3)
+julia> chunks(x, 2, 3)
 4:5
 
-julia> splitter(x, 3, 3)
+julia> chunks(x, 3, 3)
 6:7
 ```
 
 And using `type = :scatter`, we have:
 
 ```julia-repl
-julia> splitter(x, 1, 3, :scatter)
+julia> chunks(x, 1, 3, :scatter)
 1:3:7
 
-julia> splitter(x, 2, 3, :scatter)
+julia> chunks(x, 2, 3, :scatter)
 2:3:5
 
-julia> splitter(x, 3, 3, :scatter)
+julia> chunks(x, 3, 3, :scatter)
 3:3:6
 ```
 """
-function splitter(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+function chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
-    return _splitter(array, ichunk, nchunks, Val(type))
+    return _chunks(array, ichunk, nchunks, Val(type))
 end
 
 #
 # function that splits the work in chunks that are scattered over the array
 #
-function _splitter(array, ichunk, nchunks, ::Val{:scatter})
+function _chunks(array, ichunk, nchunks, ::Val{:scatter})
     first = (firstindex(array) - 1) + ichunk
     last = lastindex(array)
     step = nchunks
@@ -142,7 +142,7 @@ end
 #
 # function that splits the work in batches that are consecutive in the array
 #
-function _splitter(array, ichunk, nchunks, ::Val{:batch})
+function _chunks(array, ichunk, nchunks, ::Val{:batch})
     n = length(array)
     n_per_chunk = div(n, nchunks)
     n_remaining = n - nchunks * n_per_chunk
@@ -156,8 +156,8 @@ end
 #
 module Testing
 using ..ChunkSplitters
-function test_splitter(; array_length, nchunks, type, result, return_ranges=false)
-    ranges = collect(splitter(rand(Int, array_length), i, nchunks, type) for i in 1:nchunks)
+function test_chunks(; array_length, nchunks, type, result, return_ranges=false)
+    ranges = collect(chunks(rand(Int, array_length), i, nchunks, type) for i in 1:nchunks)
     if return_ranges
         return ranges
     else
@@ -165,15 +165,15 @@ function test_splitter(; array_length, nchunks, type, result, return_ranges=fals
     end
 end
 function sum_parallel(x, nchunks, type)
-    s = fill(zero(eltype(x)), nchunks)  
-    Threads.@threads for (range, ichunk) in splitter(x, nchunks, type)
+    s = fill(zero(eltype(x)), nchunks)
+    Threads.@threads for (range, ichunk) in chunks(x, nchunks, type)
         for i in range
             s[ichunk] += x[i]
         end
     end
     return sum(s)
 end
-function test_sum(; array_length, nchunks, type) 
+function test_sum(; array_length, nchunks, type)
     x = rand(array_length)
     return sum_parallel(x, nchunks, type) ≈ sum(x)
 end
@@ -181,14 +181,14 @@ end # module Testing
 
 @testitem ":scatter" begin
     using ChunkSplitters
-    import ChunkSplitters.Testing: test_splitter, test_sum
-    @test test_splitter(; array_length=1, nchunks=1, type=:scatter, result=[1:1])
-    @test test_splitter(; array_length=2, nchunks=1, type=:scatter, result=[1:2])
-    @test test_splitter(; array_length=2, nchunks=2, type=:scatter, result=[1:1, 2:2])
-    @test test_splitter(; array_length=3, nchunks=2, type=:scatter, result=[1:2:3, 2:2:2])
-    @test test_splitter(; array_length=7, nchunks=3, type=:scatter, result=[1:3:7, 2:3:5, 3:3:6])
-    @test test_splitter(; array_length=12, nchunks=4, type=:scatter, result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
-    @test test_splitter(; array_length=15, nchunks=4, type=:scatter, result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
+    import ChunkSplitters.Testing: test_chunks, test_sum
+    @test test_chunks(; array_length=1, nchunks=1, type=:scatter, result=[1:1])
+    @test test_chunks(; array_length=2, nchunks=1, type=:scatter, result=[1:2])
+    @test test_chunks(; array_length=2, nchunks=2, type=:scatter, result=[1:1, 2:2])
+    @test test_chunks(; array_length=3, nchunks=2, type=:scatter, result=[1:2:3, 2:2:2])
+    @test test_chunks(; array_length=7, nchunks=3, type=:scatter, result=[1:3:7, 2:3:5, 3:3:6])
+    @test test_chunks(; array_length=12, nchunks=4, type=:scatter, result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
+    @test test_chunks(; array_length=15, nchunks=4, type=:scatter, result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
     @test test_sum(; array_length=1, nchunks=1, type=:scatter)
     @test test_sum(; array_length=2, nchunks=1, type=:scatter)
     @test test_sum(; array_length=2, nchunks=2, type=:scatter)
@@ -201,14 +201,14 @@ end
 
 @testitem ":batch" begin
     using ChunkSplitters
-    import ChunkSplitters.Testing: test_splitter, test_sum
-    @test test_splitter(; array_length=1, nchunks=1, type=:batch, result=[1:1])
-    @test test_splitter(; array_length=2, nchunks=1, type=:batch, result=[1:2])
-    @test test_splitter(; array_length=2, nchunks=2, type=:batch, result=[1:1, 2:2])
-    @test test_splitter(; array_length=3, nchunks=2, type=:batch, result=[1:2, 3:3])
-    @test test_splitter(; array_length=7, nchunks=3, type=:batch, result=[1:3, 4:5, 6:7])
-    @test test_splitter(; array_length=12, nchunks=4, type=:batch, result=[1:3, 4:6, 7:9, 10:12])
-    @test test_splitter(; array_length=15, nchunks=4, type=:batch, result=[1:4, 5:8, 9:12, 13:15])
+    import ChunkSplitters.Testing: test_chunks, test_sum
+    @test test_chunks(; array_length=1, nchunks=1, type=:batch, result=[1:1])
+    @test test_chunks(; array_length=2, nchunks=1, type=:batch, result=[1:2])
+    @test test_chunks(; array_length=2, nchunks=2, type=:batch, result=[1:1, 2:2])
+    @test test_chunks(; array_length=3, nchunks=2, type=:batch, result=[1:2, 3:3])
+    @test test_chunks(; array_length=7, nchunks=3, type=:batch, result=[1:3, 4:5, 6:7])
+    @test test_chunks(; array_length=12, nchunks=4, type=:batch, result=[1:3, 4:6, 7:9, 10:12])
+    @test test_chunks(; array_length=15, nchunks=4, type=:batch, result=[1:4, 5:8, 9:12, 13:15])
     @test test_sum(; array_length=1, nchunks=1, type=:batch)
     @test test_sum(; array_length=2, nchunks=1, type=:batch)
     @test test_sum(; array_length=2, nchunks=2, type=:batch)

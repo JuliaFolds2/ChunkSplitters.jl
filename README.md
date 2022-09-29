@@ -8,10 +8,10 @@ the workload if completely thread safe
 
 ## Iterator
 
-The main interface is the `splitter` iterator:
+The main interface is the `chunks` iterator:
 
 ```julia
-splitter(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
+chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
 ```
 
 This iterator returns a `Tuple{UnitRange,Int}` with the range of indices of `array`
@@ -28,30 +28,30 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> Threads.@threads for (range,ichunk) in splitter(x, 3, :batch)
-           @show (range, ichunk)
+julia> Threads.@threads for (xrange,ichunk) in chunks(x, 3, :batch)
+           @show (xrange, ichunk)
        end
-(range, ichunk) = (6:7, 3)
-(range, ichunk) = (1:3, 1)
-(range, ichunk) = (4:5, 2)
+(xrange, ichunk) = (1:3, 1)
+(xrange, ichunk) = (6:7, 3)
+(xrange, ichunk) = (4:5, 2)
 
-julia> Threads.@threads for (range,ichunk) in splitter(x, 3, :scatter)
-           @show (range, ichunk)
+julia> Threads.@threads for (xrange,ichunk) in chunks(x, 3, :scatter)
+           @show (xrange, ichunk)
        end
-(range, ichunk) = (2:3:5, 2)
-(range, ichunk) = (1:3:7, 1)
-(range, ichunk) = (3:3:6, 3)
+(xrange, ichunk) = (2:3:5, 2)
+(xrange, ichunk) = (1:3:7, 1)
+(xrange, ichunk) = (3:3:6, 3)
 ```
 
 Now, we illustrate the use of the iterator in a practical example:
 
 ```julia
-julia> using ChunkSplitters: splitter
+julia> using ChunkSplitters: chunks
 
 julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
            s = fill(zero(eltype(x)), nchunks)
-           Threads.@threads for (range, ichunk) in splitter(x, nchunks)
-               for i in range
+           Threads.@threads for (xrange, ichunk) in chunks(x, nchunks)
+               for i in xrange
                   s[ichunk] += f(x[i])
               end
            end
@@ -84,12 +84,12 @@ julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=64)
 Note that it is possible that `nchunks > nthreads()` is optimal, since that
 will distribute the workload more evenly among available threads.
 
-## Lower-level splitter function 
+## Lower-level chunks function 
 
-The package also provides a lower-level splitter function:
+The package also provides a lower-level chunks function:
 
 ```julia
-splitter(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 ```
 
 that returns a range of indexes of `array`, given the number of chunks in
@@ -101,12 +101,12 @@ The example shows how to compute a sum of a function applied to the elements of 
 and the effect of the parallelization and the number of chunks in the performance:
 
 ```julia
-julia> using ChunkSplitters: splitter
+julia> using ChunkSplitters: chunks
 
 julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
            s = fill(zero(eltype(x)), nchunks)
            Threads.@threads for ichunk in 1:nchunks
-               for i in splitter(x, ichunk, nchunks)
+               for i in chunks(x, ichunk, nchunks)
                    s[ichunk] += f(x[i])
                end
            end
@@ -137,7 +137,7 @@ julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=64)
 ```
 
 
-## Examples of different splitters
+## Examples of different chunkss
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `type = :batch` option):
@@ -147,25 +147,25 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> splitter(x, 1, 3)
+julia> chunks(x, 1, 3)
 1:3
 
-julia> splitter(x, 2, 3)
+julia> chunks(x, 2, 3)
 4:5
 
-julia> splitter(x, 3, 3)
+julia> chunks(x, 3, 3)
 6:7
 ```
 
 And using `type = :scatter`, we have:
 
 ```julia
-julia> splitter(x, 1, 3, :scatter)
+julia> chunks(x, 1, 3, :scatter)
 1:3:7
 
-julia> splitter(x, 2, 3, :scatter)
+julia> chunks(x, 2, 3, :scatter)
 2:3:5
 
-julia> splitter(x, 3, 3, :scatter)
+julia> chunks(x, 3, 3, :scatter)
 3:3:6
 ```
