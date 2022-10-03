@@ -6,6 +6,15 @@ is recommended for a finer control of the parallelization, and for guaranteeing 
 the workload if completely thread safe 
 (without the use `threadid()` - see [here](https://juliafolds.github.io/FLoops.jl/dev/explanation/faq/#faq-state-threadid)). 
 
+## Instalation
+
+Install with:
+```julia
+julia> import Pkg
+
+julia> Pkg.add("ChunkSplitters
+```
+
 ## Iterator
 
 The main interface is the `chunks` iterator:
