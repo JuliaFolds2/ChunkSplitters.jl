@@ -12,7 +12,7 @@ Install with:
 ```julia
 julia> import Pkg
 
-julia> Pkg.add("ChunkSplitters
+julia> Pkg.add("ChunkSplitters")
 ```
 
 ## Iterator
