@@ -52,10 +52,13 @@ julia> Threads.@threads for (xrange,ichunk) in chunks(x, 3, :scatter)
 (xrange, ichunk) = (3:3:6, 3)
 ```
 
+If the third argument is ommitted (i. e. `:batch` or `:scatter`), the default `:batch` option
+is used.
+
 Now, we illustrate the use of the iterator in a practical example:
 
 ```julia
-julia> using ChunkSplitters: chunks
+julia> using ChunkSplitters
 
 julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
            s = fill(zero(eltype(x)), nchunks)
@@ -146,7 +149,7 @@ julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=64)
 ```
 
 
-## Examples of different chunkss
+## Examples of different splitters
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `type = :batch` option):
