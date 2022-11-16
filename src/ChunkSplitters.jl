@@ -42,39 +42,40 @@ function chunks end
 const chunks_types = (:batch, :scatter)
 
 # Structure that carries the chunks data
-struct Chunk{I,N,T}
-    x::I
+struct Chunk{T<:AbstractArray}
+    x::T
     nchunks::Int
+    type::Symbol
 end
 
 # Constructor for the chunks
 function chunks(x::AbstractArray, nchunks::Int, type=:batch)
     nchunks >= 1 || throw(ArgumentError("nchunks must be >= 1"))
     (type in chunks_types) || throw(ArgumentError("type must be one of $chunks_types"))
-    Chunk{typeof(x),nchunks,type}(x, nchunks)
+    Chunk{typeof(x)}(x, nchunks, type)
 end
 
 import Base: length, eltype
-length(::Chunk{I,N}) where {I,N} = N
+length(c::Chunk) = c.nchunks
 eltype(::Chunk) = UnitRange{Int}
 
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
-lastindex(::Chunk{I,N}) where {I,N} = N
-getindex(it::Chunk{I,N,T}, i::Int) where {I,N,T} = (chunks(it.x, i, it.nchunks, T), i)
+lastindex(c::Chunk) = c.chunks
+getindex(c::Chunk, i::Int) = (chunks(c.x, i, c.nchunks, c.type), i)
 
 import Base: collect
-collect(it::Chunk{I,N,T}) where {I,N,T} = [ (chunks(it.x, i, it.nchunks, T), i) for i in 1:N ]
+collect(c::Chunk) = [ (chunks(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks ]
 
 #
 # Iteration of the chunks
 #
 import Base: iterate
-function iterate(it::Chunk{I,N,T}, state=nothing) where {I,N,T}
+function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        return ((chunks(it.x, 1, it.nchunks, T), 1), 1)
-    elseif state < it.nchunks
-        return ((chunks(it.x, state + 1, it.nchunks, T), state + 1), state + 1)
+        return ((chunks(c.x, 1, c.nchunks, c.type), 1), 1)
+    elseif state < c.nchunks
+        return ((chunks(c.x, state + 1, c.nchunks, c.type), state + 1), state + 1)
     else
         return nothing
     end
@@ -129,29 +130,21 @@ julia> chunks(x, 3, 3, :scatter)
 """
 function chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
-    return _chunks(array, ichunk, nchunks, Val(type))
-end
-
-#
-# function that splits the work in chunks that are scattered over the array
-#
-function _chunks(array, ichunk, nchunks, ::Val{:scatter})
-    first = (firstindex(array) - 1) + ichunk
-    last = lastindex(array)
-    step = nchunks
-    return first:step:last
-end
-
-#
-# function that splits the work in batches that are consecutive in the array
-#
-function _chunks(array, ichunk, nchunks, ::Val{:batch})
-    n = length(array)
-    n_per_chunk = div(n, nchunks)
-    n_remaining = n - nchunks * n_per_chunk
-    first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
-    last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
-    return first:last
+    if type == :batch
+        n = length(array)
+        n_per_chunk = div(n, nchunks)
+        n_remaining = n - nchunks * n_per_chunk
+        first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
+        last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
+        return first:last
+    elseif type == :scatter
+        first = (firstindex(array) - 1) + ichunk
+        last = lastindex(array)
+        step = nchunks
+        return first:step:last
+    else
+        throw(ArgumentError("Chunk type must be :batch or :scatter"))
+    end
 end
 
 #
