@@ -132,8 +132,7 @@ function chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:b
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
     if type == :batch
         n = length(array)
-        n_per_chunk = div(n, nchunks)
-        n_remaining = n - nchunks * n_per_chunk
+        n_per_chunk, n_remaining = divrem(n, nchunks)
         first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
         last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
         return first:last
