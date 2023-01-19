@@ -26,6 +26,8 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+          version: '1'
+          include-all-prereleases: true
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
@@ -42,10 +44,6 @@ jobs:
       - uses: codecov/codecov-action@v1
         with:
           file: lcov.info
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: '1'
-          include-all-prereleases: true
 
   #docs:
   #  name: Documentation
