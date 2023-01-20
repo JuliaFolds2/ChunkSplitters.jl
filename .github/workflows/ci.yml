@@ -20,16 +20,17 @@ jobs:
           - windows-latest
         arch:
           - x64
-        include: 
-          - os: ubuntu-latest
-            version: '^1.6'
-            include-all-prereleases: true
+        version2: 
+          - '^1.6'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+        with:
+          version: ${{ matrix.version2 }}
+          include-all-prereleases: true
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
