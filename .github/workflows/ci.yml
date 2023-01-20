@@ -20,10 +20,11 @@ jobs:
           - windows-latest
         arch:
           - x64
-      include: 
-        - os: ubuntu-latest
-          version: '^1.6'
-          include-all-prereleases: true
+      matrix:
+        version:
+          - '^1.6'
+        os: ubuntu-latest
+        include-all-prereleases: true
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
