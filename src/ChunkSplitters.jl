@@ -5,14 +5,13 @@ using TestItems
 export chunks
 
 """
-
     chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
 
 This function returns an iterable object that will split the *indices* of `array` into
 to `nchunks` chunks. `type` can be `:batch` or `:scatter`. It can be used to directly iterate
 over the chunks of a collection in a multi-threaded manner.
 
-## Eample
+## Example
 
 ```julia-repl
 julia> using ChunkSplitters 
@@ -65,7 +64,7 @@ lastindex(c::Chunk) = c.chunks
 getindex(c::Chunk, i::Int) = (chunks(c.x, i, c.nchunks, c.type), i)
 
 import Base: collect
-collect(c::Chunk) = [ (chunks(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks ]
+collect(c::Chunk) = [(chunks(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks]
 
 #
 # Iteration of the chunks
@@ -86,8 +85,6 @@ end
 #
 """
     chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
-
-# Extended help
 
 Function that returns a range of indexes of `array`, given the number of chunks in
 which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
@@ -194,7 +191,7 @@ end # module Testing
     @test test_sum(; array_length=15, nchunks=4, type=:scatter)
     @test test_sum(; array_length=117, nchunks=4, type=:scatter)
     x = OffsetArray(1:7, -1:5)
-    @test collect.(getindex.(collect(chunks(x,3,:scatter)),1)) == [[-1,2,5],[0,3],[1,4]]
+    @test collect.(getindex.(collect(chunks(x, 3, :scatter)), 1)) == [[-1, 2, 5], [0, 3], [1, 4]]
 end
 
 @testitem ":batch" begin
@@ -217,7 +214,7 @@ end
     @test test_sum(; array_length=15, nchunks=4, type=:batch)
     @test test_sum(; array_length=117, nchunks=4, type=:batch)
     x = OffsetArray(1:7, -1:5)
-    @test collect.(getindex.(collect(chunks(x,3,:batch)),1)) == [[-1,0,1],[2,3],[4,5]]
+    @test collect.(getindex.(collect(chunks(x, 3, :batch)), 1)) == [[-1, 0, 1], [2, 3], [4, 5]]
 end
 
 end # module ChunkSplitters
