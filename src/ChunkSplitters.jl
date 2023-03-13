@@ -217,4 +217,13 @@ end
     @test collect.(getindex.(collect(chunks(x, 3, :batch)), 1)) == [[-1, 0, 1], [2, 3], [4, 5]]
 end
 
+@testitem "indexing" begin
+    using ChunkSplitters
+    c = chunks(1:5, 4)
+    @test first(c) == (1:2, 1)
+    @test last(c) == (5:5, 4)
+    @test c[2] == (3:3, 2) 
+    @test length(c) == 4
+end
+
 end # module ChunkSplitters
