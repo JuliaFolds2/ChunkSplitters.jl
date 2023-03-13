@@ -60,7 +60,7 @@ eltype(::Chunk) = UnitRange{Int}
 
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
-lastindex(c::Chunk) = c.chunks
+lastindex(c::Chunk) = c.nchunks
 getindex(c::Chunk, i::Int) = (chunks(c.x, i, c.nchunks, c.type), i)
 
 import Base: collect
