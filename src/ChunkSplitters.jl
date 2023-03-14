@@ -51,7 +51,7 @@ end
 function chunks(x::AbstractArray, nchunks::Int, type=:batch)
     nchunks >= 1 || throw(ArgumentError("nchunks must be >= 1"))
     (type in chunks_types) || throw(ArgumentError("type must be one of $chunks_types"))
-    Chunk{typeof(x)}(x, nchunks, type)
+    Chunk{typeof(x)}(x, min(length(x), nchunks), type)
 end
 
 import Base: length, eltype
@@ -127,6 +127,8 @@ julia> chunks(x, 3, 3, :scatter)
 """
 function chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
+    ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
+
     if type == :batch
         n = length(array)
         n_per_chunk, n_remaining = divrem(n, nchunks)
@@ -224,6 +226,21 @@ end
     @test last(c) == (5:5, 4)
     @test c[2] == (3:3, 2) 
     @test length(c) == 4
+end
+
+@testitem "chunk sizes" begin
+    using ChunkSplitters
+
+    # Sanity test for nchunks < array_length
+    c = chunks(1:10, 2)
+    @test length(c) == 2
+
+    # When nchunks > array_length, we shouldn't create more chunks than array_length
+    c = chunks(1:10, 20)
+    @test length(c) == 10
+
+    # And we shouldn't be able to get an out-of-bounds chunk
+    @test_throws ArgumentError chunks(1:10, 20, 40)
 end
 
 end # module ChunkSplitters
