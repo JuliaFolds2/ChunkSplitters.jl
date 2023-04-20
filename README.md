@@ -12,7 +12,7 @@ A discussion on the possible use of `ChunkSplitters` to improve load-balancing i
 ## Installation
 
 Install with:
-```julia-repl
+```julia
 julia> import Pkg; Pkg.add("ChunkSplitters")
 ```
 
