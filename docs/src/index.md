@@ -1,6 +1,6 @@
 # ChunkSplitters.jl
 
-ChunkSplitters facilitate the splitting of the workload of parallel
+[ChunkSplitters.jl](https://github.com/m3g/ChunkSplitters.jl) facilitate the splitting of the workload of parallel
 jobs independently on the number of threads that are effectively available. It allows for a finer, lower level, control
 of the load of each task.
 
