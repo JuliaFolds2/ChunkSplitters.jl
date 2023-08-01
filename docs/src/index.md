@@ -34,7 +34,7 @@ In the `:batch` type, the tasks are associated to each thread until the fraction
 complete. In the `:scatter` type, the tasks are assigned in an alternating fashion. If the workload is uneven and
 correlated with its position in the input array, the `:scatter` option will be more efficient. 
 
-## Examples
+## Example
 
 Here we illustrate which are the indexes of the chunks returned by each iterator:
 
@@ -291,3 +291,6 @@ julia> @btime uneven_workload_threads($x, $work_load; nchunks=64, chunk_type=:ba
   1.451 ms (47 allocations: 5.08 KiB)
 -1.5503788131612682e8
 ```
+
+!!! note
+    Note that increasing the number of chunks beyond `nthreads()` gives better performance for the simple sum shown [in the Example section above](#Example). However, this is due to more subtle effects (false-sharing) and not related to the chunking and the distribution of work among threads. For well-designed parallel algorithms, `nchunks == nthreads()` should be optimal in conjuction with `@threads`.
