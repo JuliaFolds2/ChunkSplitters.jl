@@ -278,7 +278,7 @@ julia> @btime uneven_workload_spawn($x, $work_load; nchunks=8, chunk_type=:scatt
 -1.5503788131612682e8
 ```
 
-Now, additionally, one can vary the number of chunks, and that can improve the load balancing as well:
+Now, alternativelly (or additionally), one can vary the number of chunks, and that can improve the load balancing as well:
 
 ```julia
 julia> @btime uneven_workload_spawn($x, $work_load; nchunks=64, chunk_type=:batch)
