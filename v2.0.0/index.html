@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · ChunkSplitters.jl</title><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.svg" alt="ChunkSplitters.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>ChunkSplitters.jl</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#The-chunks-iterator"><span>The <code>chunks</code> iterator</span></a></li><li><a class="tocitem" href="#Basic-example"><span>Basic example</span></a></li><li><a class="tocitem" href="#Lower-level-chunks-function"><span>Lower-level <code>chunks</code> function</span></a></li><li><a class="tocitem" href="#Load-balancing-considerations"><span>Load balancing considerations</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/m3g/ChunkSplitters.jl/blob/main/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="ChunkSplitters.jl"><a class="docs-heading-anchor" href="#ChunkSplitters.jl">ChunkSplitters.jl</a><a id="ChunkSplitters.jl-1"></a><a class="docs-heading-anchor-permalink" href="#ChunkSplitters.jl" title="Permalink"></a></h1><p><a href="https://github.com/m3g/ChunkSplitters.jl">ChunkSplitters.jl</a> facilitates the splitting of a given list of work items (of potentially uneven workload) into chunks that can be readily used for parallel processing. Operations on these chunks can, for example, be parallelized with Julia&#39;s multithreading tools, where separate tasks are created for each chunk. Compared to naive parallelization, ChunkSplitters.jl therefore effectively allows for more fine-grained control of the composition and workload of each parallel task.</p><p>Working with chunks and their respective indices also improves thread-safety compared to a naive approach based on <code>threadid()</code> indexing (see <a href="https://julialang.org/blog/2023/07/PSA-dont-use-threadid/">PSA: Thread-local state is no longer recommended</a>). </p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>Install with:</p><pre><code class="language-julia-repl hljs">julia&gt; import Pkg; Pkg.add(&quot;ChunkSplitters&quot;)</code></pre><h2 id="The-chunks-iterator"><a class="docs-heading-anchor" href="#The-chunks-iterator">The <code>chunks</code> iterator</a><a id="The-chunks-iterator-1"></a><a class="docs-heading-anchor-permalink" href="#The-chunks-iterator" title="Permalink"></a></h2><p>The main interface is the <code>chunks</code> iterator:</p><pre><code class="language-julia hljs">chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)</code></pre><p>This iterator returns a <code>Tuple{UnitRange,Int}</code> which indicates the range of indices of the input <code>array</code> for each given chunk and the index of the latter. The <code>type</code> parameter is optional. If <code>type == :batch</code>, the ranges are consecutive (default behavior). If <code>type == :scatter</code>, the range is scattered over the array.</p><p>The different chunking variants are illustrated in the following figure: </p><p><img src="assets/splitters.svg" alt="splitter types"/></p><p>For <code>type=:batch</code>, each chunk is &quot;filled up&quot; one after another with work items such that all chunks hold the same number of work items (as far as possible). For <code>type=:scatter</code>, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. </p><h2 id="Basic-example"><a class="docs-heading-anchor" href="#Basic-example">Basic example</a><a id="Basic-example-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-example" title="Permalink"></a></h2><p>Let&#39;s first illustrate the chunks returned by <code>chunks</code> for the different chunking variants:</p><pre><code class="language-julia hljs">julia&gt; using ChunkSplitters 
+
+julia&gt; x = rand(7);
+
+julia&gt; for (xrange,ichunk) in chunks(x, 3, :batch)
+           @show (xrange, ichunk)
+       end
+(xrange, ichunk) = (1:3, 1)
+(xrange, ichunk) = (4:5, 2)
+(xrange, ichunk) = (6:7, 3)
+
+julia&gt; for (xrange,ichunk) in chunks(x, 3, :scatter)
+           @show (xrange, ichunk)
+       end
+(xrange, ichunk) = (1:3:7, 1)
+(xrange, ichunk) = (2:3:5, 2)
+(xrange, ichunk) = (3:3:6, 3)</code></pre><p>Now, let&#39;s demonstrate how to use chunks in a simple multi-threaded example:</p><pre><code class="language-julia hljs">julia&gt; using BenchmarkTools
+
+julia&gt; using ChunkSplitters
+
+julia&gt; function sum_parallel(f, x; nchunks=Threads.nthreads())
+           s = fill(zero(eltype(x)), nchunks)
+           Threads.@threads for (xrange, ichunk) in chunks(x, nchunks)
+               for i in xrange
+                  s[ichunk] += f(x[i])
+               end
+           end
+           return sum(s)
+       end
+
+julia&gt; x = rand(10^7);
+
+julia&gt; Threads.nthreads()
+12
+
+julia&gt; @btime sum(x -&gt; log(x)^7, $x)
+  115.026 ms (0 allocations: 0 bytes)
+-5.062317099586189e10
+
+julia&gt; @btime sum_parallel(x -&gt; log(x)^7, $x; nchunks=Threads.nthreads())
+  33.723 ms (77 allocations: 6.55 KiB)
+-5.062317099581316e10</code></pre><p>Apart from <code>@threads</code>, <code>chunks</code> can of course also be used in conjuction with <code>@spawn</code>. See below for an explicit example.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Note that increasing the number of chunks beyond <code>nthreads()</code> gives better performance for the simple parallel-sum implementation shown above. However, this is due to more subtle effects (false-sharing) and not related to the chunking and the distribution of work among threads. For well-designed parallel algorithms, <code>nchunks == nthreads()</code> should be optimal in conjuction with <code>@threads</code>.</p></div></div><h2 id="Lower-level-chunks-function"><a class="docs-heading-anchor" href="#Lower-level-chunks-function">Lower-level <code>chunks</code> function</a><a id="Lower-level-chunks-function-1"></a><a class="docs-heading-anchor-permalink" href="#Lower-level-chunks-function" title="Permalink"></a></h2><p>The package also provides a lower-level chunks function:</p><pre><code class="language-julia hljs">chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)</code></pre><p>that returns the range of indexes corresponding to the work items in the input <code>array</code> that are associated with chunk number <code>ichunk</code>. </p><h3 id="Example"><a class="docs-heading-anchor" href="#Example">Example</a><a id="Example-1"></a><a class="docs-heading-anchor-permalink" href="#Example" title="Permalink"></a></h3><pre><code class="language-julia hljs">julia&gt; using BenchmarkTools
+
+julia&gt; using ChunkSplitters: chunks
+
+julia&gt; function sum_parallel(f, x; nchunks=Threads.nthreads())
+           s = fill(zero(eltype(x)), nchunks)
+           Threads.@threads for ichunk in 1:nchunks
+               for i in chunks(x, ichunk, nchunks)
+                   s[ichunk] += f(x[i])
+               end
+           end
+           return sum(s)
+       end
+
+julia&gt; x = rand(10^7);
+
+julia&gt; Threads.nthreads()
+6
+
+julia&gt; @btime sum(x -&gt; log(x)^7, $x)
+  238.039 ms (0 allocations: 0 bytes)
+-5.062317099586189e10
+
+julia&gt; @btime sum_parallel(x -&gt; log(x)^7, $x; nchunks=Threads.nthreads())
+  81.112 ms (38 allocations: 3.27 KiB)
+-5.062317099581316e10</code></pre><h3 id="Example:-chunking-variants"><a class="docs-heading-anchor" href="#Example:-chunking-variants">Example: chunking variants</a><a id="Example:-chunking-variants-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-chunking-variants" title="Permalink"></a></h3><p>For example, if we have an array of 7 elements, and the work on the elements is divided into 3 chunks, we have (using the default <code>type = :batch</code> option):</p><pre><code class="language-julia hljs">julia&gt; using ChunkSplitters
+
+julia&gt; x = rand(7);
+
+julia&gt; chunks(x, 1, 3)
+1:3
+
+julia&gt; chunks(x, 2, 3)
+4:5
+
+julia&gt; chunks(x, 3, 3)
+6:7</code></pre><p>And using <code>type = :scatter</code>, we have:</p><pre><code class="language-julia hljs">julia&gt; chunks(x, 1, 3, :scatter)
+1:3:7
+
+julia&gt; chunks(x, 2, 3, :scatter)
+2:3:5
+
+julia&gt; chunks(x, 3, 3, :scatter)
+3:3:6</code></pre><h2 id="Load-balancing-considerations"><a class="docs-heading-anchor" href="#Load-balancing-considerations">Load balancing considerations</a><a id="Load-balancing-considerations-1"></a><a class="docs-heading-anchor-permalink" href="#Load-balancing-considerations" title="Permalink"></a></h2><p>We create a very unbalanced workload:</p><pre><code class="language-julia-repl hljs">julia&gt; work_load = collect(div(10^4,i) for i in 1:64);
+
+julia&gt; using UnicodePlots
+
+julia&gt; lineplot(work_load; xlabel=&quot;task&quot;, ylabel=&quot;workload&quot;)
+                   ┌────────────────────────────────────────┐ 
+            10 000 │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠸⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+   workload        │⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⢱⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⠸⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⠀⢇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⠀⠈⢆⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                   │⠀⠀⠀⠀⠈⠲⢤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                 0 │⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠓⠒⠒⠒⠒⠒⠦⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⣀⣀⣀⠀⠀⠀│ 
+                   └────────────────────────────────────────┘ 
+                   ⠀0⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀70⠀ 
+                   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀task⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ </code></pre><p>The scenario that we will consider below is the following: We want to parallize the operation &quot;sum <code>log(x[i])^7</code> for <code>x[i]</code>&quot;, where <code>x</code> is a regular array. However, to establish the uneven workload shown above, we will make each task sum up a different number of elements of <code>x</code>, specifically as many elements as is indicated by the <code>work_load</code> array for the given task/work item.</p><p>For parallelization, we will use <code>Threads.@threads</code> and <code>Threads.@sync/Threads.@spawn</code>, which imply different possibilities of load balancing, in conjuction with the different chunking variants <code>:batch</code> and <code>:scatter</code>.</p><h3 id="Using-@threads"><a class="docs-heading-anchor" href="#Using-@threads">Using <code>@threads</code></a><a id="Using-@threads-1"></a><a class="docs-heading-anchor-permalink" href="#Using-@threads" title="Permalink"></a></h3><p>First, we consider a variant where the <code>@threads</code> macro is used. The multithreaded operation is:</p><pre><code class="language-julia hljs">julia&gt; using Base.Threads, ChunkSplitters
+
+julia&gt; function uneven_workload_threads(x, work_load; nchunks::Int, chunk_type::Symbol)
+           s = fill(zero(eltype(x)), nchunks)
+           @threads for (xrange, ichunk) in chunks(work_load, nchunks, chunk_type)
+               for i in xrange
+                   s[ichunk] += sum(log(x[j])^7 for j in 1:work_load[i]) 
+               end
+           end
+           return sum(s)
+       end</code></pre><p>Using <code>nchunks == Thread.nthreads() == 8</code>, we get the following timings:</p><pre><code class="language-julia hljs">julia&gt; using BenchmarkTools 
+
+julia&gt; @btime uneven_workload_threads($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:batch)
+  1.451 ms (46 allocations: 4.61 KiB)
+-1.5503788131612685e8
+
+julia&gt; @btime uneven_workload_threads($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:scatter)
+  826.857 μs (46 allocations: 4.61 KiB)
+-1.5503788131612682e8</code></pre><p>Note that despite the fact that <code>@threads</code> doesn&#39;t balance load internally, one can get &quot;poor man&#39;s load balancing&quot;, and thus better performance for the given uneven workload, by using <code>:scatter</code> instead of <code>:batch</code>. This is because for <code>:scatter</code> we create chunks by <em>sampling</em> from the entire workload such that chunks will consist of work items with vastly different computational weight. In contrast, for <code>:batch</code>, the first couple of chunks will have very high workload whereas the latter ones are computationally cheap.</p><h3 id="Using-@sync/@spawn"><a class="docs-heading-anchor" href="#Using-@sync/@spawn">Using <code>@sync/@spawn</code></a><a id="Using-@sync/@spawn-1"></a><a class="docs-heading-anchor-permalink" href="#Using-@sync/@spawn" title="Permalink"></a></h3><p>In contrast to <code>@threads</code>, <code>@spawn</code> implements load balancing through Julia&#39;s task scheduler. Specifically, the spawned tasks, corresponding to chunks from our <code>work_load</code> array, are taken as they are and will be dynamically scheduled at runtime. (Compare this to <code>@threads</code> which will create a task for <em>multiple</em> of our chunks, thus, effectively, performing its own internal &quot;chunking&quot;.)</p><p>The implementation is similar to above but this time based on <code>@spawn</code> (and <code>@sync</code>):</p><pre><code class="language-julia hljs">julia&gt; function uneven_workload_spawn(x, work_load; nchunks::Int, chunk_type::Symbol)
+           s = fill(zero(eltype(x)), nchunks)
+           @sync for (xrange, ichunk) in chunks(work_load, nchunks, chunk_type)
+               @spawn for i in xrange
+                   s[ichunk] += sum(log(x[j])^7 for j in 1:work_load[i]) 
+               end
+           end
+           return sum(s)
+       end</code></pre><p>Note that for <code>nchunks == Thread.nthreads() == 8</code> we observer similar (only slightly better) timings as for the <code>@threads</code> example above</p><pre><code class="language-julia hljs">julia&gt; @btime uneven_workload_spawn($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:batch)
+  1.398 ms (59 allocations: 5.08 KiB)
+-1.5503788131612685e8
+
+julia&gt; @btime uneven_workload_spawn($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:scatter)
+  745.953 μs (59 allocations: 5.08 KiB)
+-1.5503788131612682e8</code></pre><p>This isn&#39;t surprising because by choosing <code>nchunks == Thread.nthreads()</code> we&#39;re closely mimicing the &quot;chunking&quot; that <code>@threads</code> is doing internally and leaving not much freedom to the load balancer (because each thread gets a single chunk/task anyways).</p><p>However, by choosing a larger value for <code>nchunks</code> we can improve the load balancing, and thus the performance, by giving the Julia&#39;s dynamic scheduler more tasks (&quot;units of work&quot;) to balance out:</p><pre><code class="language-julia hljs">julia&gt; @btime uneven_workload_spawn($x, $work_load; nchunks=64, chunk_type=:batch)
+  603.476 μs (398 allocations: 38.83 KiB)
+-1.5503788131612682e8</code></pre><p>Note that the same does not work when using <code>@threads</code>, because the first <code>8</code> chunks will noneless be assigned to the same thread (because of the automatic interal &quot;chunking&quot;):</p><pre><code class="language-julia hljs">julia&gt; @btime uneven_workload_threads($x, $work_load; nchunks=64, chunk_type=:batch)
+  1.451 ms (47 allocations: 5.08 KiB)
+-1.5503788131612682e8</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.22 on <span class="colophon-date" title="Wednesday 2 August 2023 17:03">Wednesday 2 August 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
