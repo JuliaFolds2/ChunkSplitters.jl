@@ -16,7 +16,7 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 The main interface is the `chunks` iterator:
 
 ```julia
-chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
+chunks(array::AbstractArray, nchunks::Int[, type::Symbol=:batch])
 ```
 
 This iterator returns a `Tuple{UnitRange,Int}` which indicates the range of indices of the input `array` for each given chunk and the index of the latter. If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range is scattered over the array.
@@ -27,34 +27,31 @@ The different chunking variants are illustrated in the following figure:
 
 For `type=:batch`, each chunk is "filled up" one after another with work items such that all chunks hold the same number of work items (as far as possible). For `type=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
 
-## Example
+## Basic example
 
-Here we illustrate which are the indexes of the chunks returned by each iterator:
+Let's first illustrate the chunks returned by `chunks` for the different chunking variants:
 
 ```julia
 julia> using ChunkSplitters 
 
 julia> x = rand(7);
 
-julia> Threads.@threads for (xrange,ichunk) in chunks(x, 3, :batch)
+julia> for (xrange,ichunk) in chunks(x, 3, :batch)
            @show (xrange, ichunk)
        end
 (xrange, ichunk) = (1:3, 1)
-(xrange, ichunk) = (6:7, 3)
 (xrange, ichunk) = (4:5, 2)
+(xrange, ichunk) = (6:7, 3)
 
-julia> Threads.@threads for (xrange,ichunk) in chunks(x, 3, :scatter)
+julia> for (xrange,ichunk) in chunks(x, 3, :scatter)
            @show (xrange, ichunk)
        end
-(xrange, ichunk) = (2:3:5, 2)
 (xrange, ichunk) = (1:3:7, 1)
+(xrange, ichunk) = (2:3:5, 2)
 (xrange, ichunk) = (3:3:6, 3)
 ```
 
-If the third argument is ommitted (i. e. `:batch` or `:scatter`), the default `:batch` option
-is used.
-
-Now, we illustrate the use of the iterator in a practical example:
+Now, let's demonstrate how to use chunks in a simple multi-threaded example:
 
 ```julia
 julia> using BenchmarkTools
@@ -80,12 +77,13 @@ julia> @btime sum(x -> log(x)^7, $x)
   115.026 ms (0 allocations: 0 bytes)
 -5.062317099586189e10
 
-julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=12)
+julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads())
   33.723 ms (77 allocations: 6.55 KiB)
 -5.062317099581316e10
 ```
+Apart from `@threads`, `chunks` can of course also be used in conjuction with `@spawn`. See below for an explicit example.
 
-## Lower-level chunks function 
+## Lower-level `chunks` function 
 
 The package also provides a lower-level chunks function:
 
@@ -93,8 +91,7 @@ The package also provides a lower-level chunks function:
 chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 ```
 
-that returns a range of indexes of `array`, given the number of chunks in
-which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
+that returns the range of indexes corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
 
 ### Example
 
