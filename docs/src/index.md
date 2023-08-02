@@ -16,10 +16,10 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 The main interface is the `chunks` iterator:
 
 ```julia
-chunks(array::AbstractArray, nchunks::Int[, type::Symbol=:batch])
+chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
 ```
 
-This iterator returns a `Tuple{UnitRange,Int}` which indicates the range of indices of the input `array` for each given chunk and the index of the latter. If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range is scattered over the array.
+This iterator returns a `Tuple{UnitRange,Int}` which indicates the range of indices of the input `array` for each given chunk and the index of the latter. The `type` parameter is optional. If `type == :batch`, the ranges are consecutive (default behavior). If `type == :scatter`, the range is scattered over the array.
 
 The different chunking variants are illustrated in the following figure: 
 
@@ -217,6 +217,8 @@ julia> function uneven_workload_threads(x, work_load; nchunks::Int, chunk_type::
 Using `nchunks == Thread.nthreads() == 8`, we get the following timings:
 
 ```julia
+julia> using BenchmarkTools 
+
 julia> @btime uneven_workload_threads($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:batch)
   1.451 ms (46 allocations: 4.61 KiB)
 -1.5503788131612685e8
