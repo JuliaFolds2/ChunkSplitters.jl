@@ -1,11 +1,8 @@
 # ChunkSplitters.jl
 
-[ChunkSplitters.jl](https://github.com/m3g/ChunkSplitters.jl) facilitate the splitting of the workload of parallel
-jobs independently on the number of threads that are effectively available. It allows for a finer, lower level, control
-of the load of each task.
+[ChunkSplitters.jl](https://github.com/m3g/ChunkSplitters.jl) facilitates the splitting of a given list of work items (of potentially uneven workload) into chunks that can be readily used for parallel processing. Operations on these chunks can, for example, be parallelized with Julia's multithreading tools, where separate tasks are created for each chunk. Compared to naive parallelization, ChunkSplitters.jl therefore effectively allows for more fine-grained control of the composition and workload of each parallel task.
 
-The way chunks are indexed is also recommended for guaranteeing that the workload if completely thread safe 
-(without the use `threadid()` - see [here](https://juliafolds.github.io/FLoops.jl/dev/explanation/faq/#faq-state-threadid)). 
+Working with chunks and their respective indices also improves thread-safety compared to a naive approach based on `threadid()` indexing (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
 
 ## Installation
 
