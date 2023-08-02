@@ -2,10 +2,6 @@
 [![Tests](https://img.shields.io/badge/build-passing-green)](https://github.com/m3g/ChunkSplitters.jl/actions)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
-<p align=center>
-<img src=https://raw.githubusercontent.com/m3g/ChunkSplitters.jl/main/docs/src/assets/logo.svg>
-</p>
-
 # ChunkSplitters.jl
 
 [ChunkSplitters.jl](https://github.com/m3g/ChunkSplitters.jl) facilitates the splitting of a given list of work items (of potentially uneven workload) into chunks that can be readily used for parallel processing. Operations on these chunks can, for example, be parallelized with Julia's multithreading tools, where separate tasks are created for each chunk. Compared to naive parallelization, ChunkSplitters.jl therefore effectively allows for more fine-grained control of the composition and workload of each parallel task.
