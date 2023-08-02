@@ -86,80 +86,6 @@ Apart from `@threads`, `chunks` can of course also be used in conjuction with `@
 !!! note
     Note that increasing the number of chunks beyond `nthreads()` gives better performance for the simple parallel-sum implementation shown above. However, this is due to more subtle effects (false-sharing) and not related to the chunking and the distribution of work among threads. For well-designed parallel algorithms, `nchunks == nthreads()` should be optimal in conjuction with `@threads`.
 
-## Lower-level `chunks` function 
-
-The package also provides a lower-level chunks function:
-
-```julia
-chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
-```
-
-that returns the range of indexes corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
-
-### Example
-
-```julia
-julia> using BenchmarkTools
-
-julia> using ChunkSplitters: chunks
-
-julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
-           s = fill(zero(eltype(x)), nchunks)
-           Threads.@threads for ichunk in 1:nchunks
-               for i in chunks(x, ichunk, nchunks)
-                   s[ichunk] += f(x[i])
-               end
-           end
-           return sum(s)
-       end
-
-julia> x = rand(10^7);
-
-julia> Threads.nthreads()
-6
-
-julia> @btime sum(x -> log(x)^7, $x)
-  238.039 ms (0 allocations: 0 bytes)
--5.062317099586189e10
-
-julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads())
-  81.112 ms (38 allocations: 3.27 KiB)
--5.062317099581316e10
-```
-
-### Example: chunking variants
-
-For example, if we have an array of 7 elements, and the work on the elements is divided
-into 3 chunks, we have (using the default `type = :batch` option):
-
-```julia
-julia> using ChunkSplitters
-
-julia> x = rand(7);
-
-julia> chunks(x, 1, 3)
-1:3
-
-julia> chunks(x, 2, 3)
-4:5
-
-julia> chunks(x, 3, 3)
-6:7
-```
-
-And using `type = :scatter`, we have:
-
-```julia
-julia> chunks(x, 1, 3, :scatter)
-1:3:7
-
-julia> chunks(x, 2, 3, :scatter)
-2:3:5
-
-julia> chunks(x, 3, 3, :scatter)
-3:3:6
-```
-
 ## Load balancing considerations
 
 We create a very unbalanced workload:
@@ -276,4 +202,80 @@ Note that the same does not work when using `@threads`, because the first `8` ch
 julia> @btime uneven_workload_threads($x, $work_load; nchunks=64, chunk_type=:batch)
   1.451 ms (47 allocations: 5.08 KiB)
 -1.5503788131612682e8
+```
+
+## Lower-level `getchunk` function 
+
+The package also provides a lower-level `getchunk` function:
+
+```julia
+getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+```
+
+that returns the range of indexes corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
+
+!!! note
+    The `getchunk` function is available in version 2 of the package. In version 1 it was named `chunks`. 
+
+### Example: chunking variants
+
+For example, if we have an array of 7 elements, and the work on the elements is divided
+into 3 chunks, we have (using the default `type = :batch` option):
+
+```julia
+julia> using ChunkSplitters
+
+julia> x = rand(7);
+
+julia> getchunk(x, 1, 3)
+1:3
+
+julia> getchunk(x, 2, 3)
+4:5
+
+julia> getchunk(x, 3, 3)
+6:7
+```
+
+And using `type = :scatter`, we have:
+
+```julia
+julia> getchunk(x, 1, 3, :scatter)
+1:3:7
+
+julia> getchunk(x, 2, 3, :scatter)
+2:3:5
+
+julia> getchunk(x, 3, 3, :scatter)
+3:3:6
+```
+### Example
+
+```julia
+julia> using BenchmarkTools
+
+julia> using ChunkSplitters
+
+julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
+           s = fill(zero(eltype(x)), nchunks)
+           Threads.@threads for ichunk in 1:nchunks
+               for i in getchunk(x, ichunk, nchunks)
+                   s[ichunk] += f(x[i])
+               end
+           end
+           return sum(s)
+       end
+
+julia> x = rand(10^7);
+
+julia> Threads.nthreads()
+6
+
+julia> @btime sum(x -> log(x)^7, $x)
+  238.039 ms (0 allocations: 0 bytes)
+-5.062317099586189e10
+
+julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads())
+  81.112 ms (38 allocations: 3.27 KiB)
+-5.062317099581316e10
 ```
