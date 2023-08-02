@@ -19,17 +19,13 @@ The main interface is the `chunks` iterator:
 chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
 ```
 
-This iterator returns a `Tuple{UnitRange,Int}` with the range of indices of `array`
-to be iterated for each given chunk. If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range
-is scattered over the array. 
+This iterator returns a `Tuple{UnitRange,Int}` which indicates the range of indices of the input `array` for each given chunk and the index of the latter. If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range is scattered over the array.
 
-The chunking types are illustrated in the figure below: 
+The different chunking variants are illustrated in the following figure: 
 
 ![splitter types](./assets/splitters.svg)
 
-In the `:batch` type, the tasks are associated to each thread until the fraction of the workload of that thread is 
-complete. In the `:scatter` type, the tasks are assigned in an alternating fashion. If the workload is uneven and
-correlated with its position in the input array, the `:scatter` option will be more efficient. 
+For `type=:batch`, each chunk is "filled up" one after another with work items such that all chunks hold the same number of work items (as far as possible). For `type=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
 
 ## Example
 
