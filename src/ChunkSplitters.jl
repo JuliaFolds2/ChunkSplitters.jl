@@ -2,7 +2,7 @@ module ChunkSplitters
 
 using TestItems
 
-export chunks
+export chunks, getchunk
 
 """
     chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
@@ -18,16 +18,16 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> Threads.@threads for i in chunks(x, 3, :batch)
-    @show Threads.threadid(), collect(i)
-end
+julia> for i in chunks(x, 3, :batch)
+           @show Threads.threadid(), collect(i)
+       end
 (Threads.threadid(), collect(i)) = (6, [1, 2, 3])
 (Threads.threadid(), collect(i)) = (8, [4, 5])
 (Threads.threadid(), collect(i)) = (7, [6, 7])
 
-julia> Threads.@threads for i in chunks(x, 3, :scatter)
-    @show Threads.threadid(), collect(i)
-end
+julia> for i in chunks(x, 3, :scatter)
+           @show Threads.threadid(), collect(i)
+       end
 (Threads.threadid(), collect(i)) = (2, [1, 4, 7])
 (Threads.threadid(), collect(i)) = (11, [2, 5])
 (Threads.threadid(), collect(i)) = (3, [3, 6])
@@ -61,10 +61,10 @@ eltype(::Chunk) = UnitRange{Int}
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.nchunks
-getindex(c::Chunk, i::Int) = (chunks(c.x, i, c.nchunks, c.type), i)
+getindex(c::Chunk, i::Int) = (getchunk(c.x, i, c.nchunks, c.type), i)
 
 import Base: collect
-collect(c::Chunk) = [(chunks(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks]
+collect(c::Chunk) = [(getchunk(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks]
 
 #
 # Iteration of the chunks
@@ -72,9 +72,9 @@ collect(c::Chunk) = [(chunks(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks
 import Base: iterate
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        return ((chunks(c.x, 1, c.nchunks, c.type), 1), 1)
+        return ((getchunk(c.x, 1, c.nchunks, c.type), 1), 1)
     elseif state < c.nchunks
-        return ((chunks(c.x, state + 1, c.nchunks, c.type), state + 1), state + 1)
+        return ((getchunk(c.x, state + 1, c.nchunks, c.type), state + 1), state + 1)
     else
         return nothing
     end
@@ -84,7 +84,7 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+    getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 
 Function that returns a range of indexes of `array`, given the number of chunks in
 which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
@@ -102,30 +102,30 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> chunks(x, 1, 3)
+julia> getchunk(x, 1, 3)
 1:3
 
-julia> chunks(x, 2, 3)
+julia> getchunk(x, 2, 3)
 4:5
 
-julia> chunks(x, 3, 3)
+julia> getchunk(x, 3, 3)
 6:7
 ```
 
 And using `type = :scatter`, we have:
 
 ```julia-repl
-julia> chunks(x, 1, 3, :scatter)
+julia> getchunk(x, 1, 3, :scatter)
 1:3:7
 
-julia> chunks(x, 2, 3, :scatter)
+julia> getchunk(x, 2, 3, :scatter)
 2:3:5
 
-julia> chunks(x, 3, 3, :scatter)
+julia> getchunk(x, 3, 3, :scatter)
 3:3:6
 ```
 """
-function chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+function getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
     ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
 
@@ -141,7 +141,7 @@ function chunks(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:b
         step = nchunks
         return first:step:last
     else
-        throw(ArgumentError("Chunk type must be :batch or :scatter"))
+        throw(ArgumentError("chunk type must be :batch or :scatter"))
     end
 end
 
@@ -151,7 +151,7 @@ end
 module Testing
 using ..ChunkSplitters
 function test_chunks(; array_length, nchunks, type, result, return_ranges=false)
-    ranges = collect(chunks(rand(Int, array_length), i, nchunks, type) for i in 1:nchunks)
+    ranges = collect(getchunk(rand(Int, array_length), i, nchunks, type) for i in 1:nchunks)
     if return_ranges
         return ranges
     else
