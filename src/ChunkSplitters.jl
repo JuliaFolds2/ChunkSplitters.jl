@@ -125,7 +125,7 @@ julia> getchunk(x, 3, 3, :scatter)
 3:3:6
 ```
 """
-Base.@constprop :aggressive function getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+function getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
     ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
 
@@ -134,15 +134,15 @@ Base.@constprop :aggressive function getchunk(array::AbstractArray, ichunk::Int,
         n_per_chunk, n_remaining = divrem(n, nchunks)
         first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
         last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
-        return first:last
+        step = 1
     elseif type == :scatter
         first = (firstindex(array) - 1) + ichunk
         last = lastindex(array)
         step = nchunks
-        return first:step:last
     else
         throw(ArgumentError("chunk type must be :batch or :scatter"))
     end
+    return first:step:last
 end
 
 #
