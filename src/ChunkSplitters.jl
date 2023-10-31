@@ -125,7 +125,7 @@ julia> getchunk(x, 3, 3, :scatter)
 3:3:6
 ```
 """
-function getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+Base.@constprop :aggressive function getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
     ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
 
