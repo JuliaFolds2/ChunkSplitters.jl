@@ -128,21 +128,20 @@ julia> getchunk(x, 3, 3, :scatter)
 function getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
     ichunk <= nchunks || throw(ArgumentError("ichunk must be less or equal to nchunks"))
     ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
-
     if type == :batch
         n = length(array)
         n_per_chunk, n_remaining = divrem(n, nchunks)
         first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
         last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
-        return first:last
+        step = 1
     elseif type == :scatter
         first = (firstindex(array) - 1) + ichunk
         last = lastindex(array)
         step = nchunks
-        return first:step:last
     else
         throw(ArgumentError("chunk type must be :batch or :scatter"))
     end
+    return first:step:last
 end
 
 #
@@ -241,6 +240,19 @@ end
 
     # And we shouldn't be able to get an out-of-bounds chunk
     @test_throws ArgumentError chunks(1:10, 20, 40)
+end
+
+@testitem "return type" begin
+    @test typeof(getchunk(1:10, 1, 2, :batch)) == StepRange{Int64, Int64}
+    @test typeof(getchunk(1:10, 1, 2, :scatter)) == StepRange{Int64, Int64}
+    function mwe(ichunk=2, nchunks=5, n=10)
+        xs = collect(1:n)
+        ys = collect(1:n)
+        cx = getchunk(xs, ichunk, nchunks, :batch)
+        cy = getchunk(ys, ichunk, nchunks, :batch)
+        return Iterators.zip(cx, cy)
+    end
+    @test @inferred mwe() == zip(3:1:4, 3:1:4)
 end
 
 end # module ChunkSplitters
