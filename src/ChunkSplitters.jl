@@ -225,6 +225,14 @@ end
     @test last(c) == (5:5, 4)
     @test c[2] == (3:3, 2) 
     @test length(c) == 4
+    @test eltype(c) == UnitRange{Int64}
+    for (ic, c) in enumerate(chunks(1:10, 2))
+        if ic == 1
+            @test c == (1:1:5, 1)
+        elseif ic == 2
+            @test c == (6:1:10, 2)
+        end
+    end
 end
 
 @testitem "chunk sizes" begin
@@ -240,6 +248,8 @@ end
 
     # And we shouldn't be able to get an out-of-bounds chunk
     @test_throws ArgumentError chunks(1:10, 20, 40)
+
+
 end
 
 @testitem "return type" begin
@@ -253,6 +263,7 @@ end
         return Iterators.zip(cx, cy)
     end
     @test @inferred mwe() == zip(3:1:4, 3:1:4)
+    @test_throws ArgumentError getchunk(1:10, 1, 2, :error) 
 end
 
 end # module ChunkSplitters
