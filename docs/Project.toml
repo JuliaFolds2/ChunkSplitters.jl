@@ -1,3 +1,6 @@
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "1"

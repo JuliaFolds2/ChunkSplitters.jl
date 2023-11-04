@@ -8,12 +8,13 @@ makedocs(
     sitename="ChunkSplitters.jl",
     pages = [
         "Home" => "index.md",
+        "References" => "references.md",
     ]
 )
 deploydocs(
     repo = "github.com/m3g/ChunkSplitters.jl.git",
     target = "build",
     branch = "gh-pages",
-    devbranch = "main", 
+    devbranch = "main",
     versions = ["stable" => "v^", "v#.#" ],
 )
