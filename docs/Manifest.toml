@@ -26,9 +26,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.ChunkSplitters]]
 deps = ["TestItems"]
-git-tree-sha1 = "997795c20668da597fa67d50b01bb73615de6221"
+git-tree-sha1 = "66fddc60e350bd15282b1d8be610a10b7ceca334"
 uuid = "ae650224-84b6-46f8-82ea-d812ca08434e"
-version = "2.0.1"
+version = "2.0.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
