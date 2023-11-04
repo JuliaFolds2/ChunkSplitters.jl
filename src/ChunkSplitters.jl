@@ -14,7 +14,7 @@ over the chunks of a collection in a multi-threaded manner.
 ## Example
 
 ```julia-repl
-julia> using ChunkSplitters 
+julia> using ChunkSplitters
 
 julia> x = rand(7);
 
@@ -87,10 +87,13 @@ end
     getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 
 Function that returns a range of indexes of `array`, given the number of chunks in
-which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
+which the array is to be split, `nchunks`, and the current chunk number `ichunk`.
 
 If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range
-is scattered over the array. 
+is scattered over the array.
+
+!!! note
+    The `getchunk` function is available in version 2 of the package. In version 1 it was named `chunks`.
 
 ## Example
 
@@ -223,7 +226,7 @@ end
     c = chunks(1:5, 4)
     @test first(c) == (1:2, 1)
     @test last(c) == (5:5, 4)
-    @test c[2] == (3:3, 2) 
+    @test c[2] == (3:3, 2)
     @test length(c) == 4
     @test eltype(c) == UnitRange{Int64}
     for (ic, c) in enumerate(chunks(1:10, 2))
@@ -263,7 +266,7 @@ end
         return Iterators.zip(cx, cy)
     end
     @test @inferred mwe() == zip(3:1:4, 3:1:4)
-    @test_throws ArgumentError getchunk(1:10, 1, 2, :error) 
+    @test_throws ArgumentError getchunk(1:10, 1, 2, :error)
 end
 
 end # module ChunkSplitters

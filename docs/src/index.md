@@ -25,7 +25,7 @@ The different chunking variants are illustrated in the following figure:
 
 ![splitter types](./assets/splitters.svg)
 
-For `type=:batch`, each chunk is "filled up" one after another with work items such that all chunks hold the same number of work items (as far as possible). For `type=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
+For `type=:batch`, each chunk is "filled up" with work items one after another such that all chunks hold approximately the same number of work items (as far as possible). For `type=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
 
 ## Basic example
 
@@ -59,68 +59,60 @@ julia> using BenchmarkTools
 julia> using ChunkSplitters
 
 julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
-           s = fill(zero(eltype(x)), nchunks)
-           Threads.@threads for (xrange, ichunk) in chunks(x, nchunks)
-               for i in xrange
-                  s[ichunk] += f(x[i])
-               end
+           t = map(chunks(x, nchunks)) do (idcs, ichunk)
+               Threads.@spawn sum(f, @view x[idcs])
            end
-           return sum(s)
+           return sum(fetch.(t))
        end
 
-julia> x = rand(10^7);
+julia> x = rand(10^8);
 
 julia> Threads.nthreads()
 12
 
-julia> @btime sum(x -> log(x)^7, $x)
-  115.026 ms (0 allocations: 0 bytes)
--5.062317099586189e10
+julia> @btime sum(x -> log(x)^7, $x);
+  1.353 s (0 allocations: 0 bytes)
 
-julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads())
-  33.723 ms (77 allocations: 6.55 KiB)
--5.062317099581316e10
+julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads());
+  120.429 ms (98 allocations: 7.42 KiB)
 ```
-Apart from `@threads`, `chunks` can of course also be used in conjuction with `@spawn`. See below for an explicit example.
-
-!!! note
-    Note that increasing the number of chunks beyond `nthreads()` gives better performance for the simple parallel-sum implementation shown above. However, this is due to more subtle effects (false-sharing) and not related to the chunking and the distribution of work among threads. For well-designed parallel algorithms, `nchunks == nthreads()` should be optimal in conjuction with `@threads`.
+Of course, `chunks` can also be used in conjuction with `@threads` (see below).
 
 ## Load balancing considerations
 
 We create a very unbalanced workload:
 
 ```julia-repl
-julia> work_load = collect(div(10^4,i) for i in 1:64);
+julia> work_load = ceil.(Int, collect(10^3 * exp(-0.002*i) for i in 1:2^11));
 
 julia> using UnicodePlots
 
-julia> lineplot(work_load; xlabel="task", ylabel="workload")
-                   ┌────────────────────────────────────────┐ 
-            10 000 │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠸⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-   workload        │⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⢱⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⠸⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⠀⢇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⠀⠈⢆⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                   │⠀⠀⠀⠀⠈⠲⢤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
-                 0 │⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠓⠒⠒⠒⠒⠒⠦⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⣀⣀⣀⠀⠀⠀│ 
-                   └────────────────────────────────────────┘ 
-                   ⠀0⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀70⠀ 
-                   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀task⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ 
+julia> lineplot(work_load; xlabel="task", ylabel="workload", xlim=(1,2^11))
+                  ┌────────────────────────────────────────┐ 
+            1 000 │⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠘⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⢹⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⢳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠈⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠈⢳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+   workload       │⠀⠀⠀⠀⠀⠀⠳⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠀⠀⠀⠙⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⢦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠲⢤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                  │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠓⠦⠤⣄⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                0 │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠓⠒⠒⠒⠦⠤⠤⠤⠤⠤⠤│ 
+                  └────────────────────────────────────────┘ 
+                  ⠀1⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀2 048⠀ 
+                  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀task⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ 
 ```
 
-The scenario that we will consider below is the following: We want to parallize the operation "sum `log(x[i])^7` for `x[i]`", where `x` is a regular array. However,
+The scenario that we will consider below is the following: We want to parallize the operation `sum(y -> log(y)^7, x)`, where `x` is a regular array. However,
 to establish the uneven workload shown above, we will make each task sum up a different number of elements of `x`, specifically as many elements as is indicated by the `work_load` array for the given task/work item.
 
-For parallelization, we will use `Threads.@threads` and `Threads.@sync/Threads.@spawn`, which imply different possibilities of load balancing, in conjuction with the different chunking variants `:batch` and `:scatter`.
+For parallelization, we will use `@spawn` and `@threads`, which, respectively, does and doesn't implement load balancing. We'll test those in conjuction with the chunking variants `:batch` and `:scatter` described above.
 
 ### Using `@threads`
 
@@ -130,78 +122,81 @@ First, we consider a variant where the `@threads` macro is used. The multithread
 julia> using Base.Threads, ChunkSplitters
 
 julia> function uneven_workload_threads(x, work_load; nchunks::Int, chunk_type::Symbol)
-           s = fill(zero(eltype(x)), nchunks)
-           @threads for (xrange, ichunk) in chunks(work_load, nchunks, chunk_type)
-               for i in xrange
-                   s[ichunk] += sum(log(x[j])^7 for j in 1:work_load[i]) 
+           chunk_sums = Vector{eltype(x)}(undef, nchunks)
+           @threads for (idcs, ichunk) in chunks(work_load, nchunks, chunk_type)
+               s = zero(eltype(x))
+               for i in idcs
+                   s += sum(y -> log(y)^7, 1:work_load[i])
                end
+               chunk_sums[ichunk] = s
            end
-           return sum(s)
+           return sum(chunk_sums)
        end
 ```
 
-Using `nchunks == Thread.nthreads() == 8`, we get the following timings:
+Using `nchunks == Thread.nthreads() == 12`, we get the following timings:
 
 ```julia
 julia> using BenchmarkTools 
 
-julia> @btime uneven_workload_threads($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:batch)
-  1.451 ms (46 allocations: 4.61 KiB)
--1.5503788131612685e8
+julia> @btime uneven_workload_threads($x, $work_load; nchunks=nthreads(), chunk_type=:batch)
+  2.030 ms (71 allocations: 7.06 KiB)
 
-julia> @btime uneven_workload_threads($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:scatter)
-  826.857 μs (46 allocations: 4.61 KiB)
--1.5503788131612682e8
+julia> @btime uneven_workload_threads($x, $work_load; nchunks=nthreads(), chunk_type=:scatter)
+  587.309 μs (70 allocations: 7.03 KiB)
 ```
 
-Note that despite the fact that `@threads` doesn't balance load internally, one can get "poor man's load balancing", and thus better performance for the given uneven workload, by using `:scatter` instead of `:batch`. This is because for `:scatter` we create chunks by *sampling* from the entire workload such that chunks will consist of work items with vastly different computational weight. In contrast, for `:batch`, the first couple of chunks will have very high workload whereas the latter ones are computationally cheap.
+Note that despite the fact that `@threads` doesn't balance load internally, one can get "poor man's load balancing" by using `:scatter` instead of `:batch`. This is due to the fact that for `:scatter` we create chunks by *sampling* from the entire workload: chunks will consist of work items with vastly different computational weight. In contrast, for `:batch`, the first couple of chunks will have high workload and the latter ones very low workload.
 
-### Using `@sync/@spawn`
+For `@threads`, increasing `nchunks` beyond `nthreads()` typically isn't helpful. This is because it will anyways always create O(`nthreads()`) tasks (i.e. a fixed number), grouping up multiple of our chunks if necessary.
 
-In contrast to `@threads`, `@spawn` implements load balancing through Julia's task scheduler. Specifically, the spawned tasks, corresponding to chunks from our `work_load` array, are taken as they are and will be dynamically scheduled at runtime. (Compare this to `@threads` which will create a task for *multiple* of our chunks, thus, effectively, performing its own internal "chunking".)
+```julia
+julia> @btime uneven_workload_threads($x, $work_load; nchunks=8*nthreads(), chunk_type=:batch);
+  2.081 ms (74 allocations: 7.88 KiB)
 
-The implementation is similar to above but this time based on `@spawn` (and `@sync`):
+julia> @btime uneven_workload_threads($x, $work_load; nchunks=8*nthreads(), chunk_type=:scatter);
+  632.149 μs (75 allocations: 7.91 KiB)
+```
+
+### Using `@spawn`
+
+We can use `@spawn` to get "proper" load balancing through Julia's task scheduler. The spawned tasks, each associated with a chunk of the `work_load` array, will be dynamically scheduled at runtime. If there are enough tasks/chunks, the scheduler can map them to Julia threads in such a way that the overall workload per Julia thread is balanced.
+
+Here is the implementation that we'll consider.
 
 ```julia
 julia> function uneven_workload_spawn(x, work_load; nchunks::Int, chunk_type::Symbol)
-           s = fill(zero(eltype(x)), nchunks)
-           @sync for (xrange, ichunk) in chunks(work_load, nchunks, chunk_type)
-               @spawn for i in xrange
-                   s[ichunk] += sum(log(x[j])^7 for j in 1:work_load[i]) 
+           ts = map(chunks(work_load, nchunks, chunk_type)) do (idcs, ichunk)
+               @spawn begin
+                   s = zero(eltype(x))
+                   for i in idcs
+                       s += sum(log(x[j])^7 for j in 1:work_load[i])
+                   end
+                   s
                end
            end
-           return sum(s)
+           return sum(fetch.(ts))
        end
 ```
 
-Note that for `nchunks == Thread.nthreads() == 8` we observer similar (only slightly better) timings as for the `@threads` example above
+For `nchunks == Thread.nthreads() == 12`, we expect to see similar performance as for the `@threads` variant above, because we're creating the same (number of) chunks/tasks.
 
 ```julia
-julia> @btime uneven_workload_spawn($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:batch)
-  1.398 ms (59 allocations: 5.08 KiB)
--1.5503788131612685e8
+julia> @btime uneven_workload_spawn($x, $work_load; nchunks=nthreads(), chunk_type=:batch);
+  1.997 ms (93 allocations: 7.30 KiB)
 
-julia> @btime uneven_workload_spawn($x, $work_load; nchunks=Thread.nthreads(), chunk_type=:scatter)
-  745.953 μs (59 allocations: 5.08 KiB)
--1.5503788131612682e8
+julia> @btime uneven_workload_spawn($x, $work_load; nchunks=nthreads(), chunk_type=:scatter);
+  573.399 μs (91 allocations: 7.23 KiB)
 ```
 
-This isn't surprising because by choosing `nchunks == Thread.nthreads()` we're closely mimicing the "chunking" that `@threads` is doing internally and leaving not much freedom to the load balancer (because each thread gets a single chunk/task anyways).
-
-However, by choosing a larger value for `nchunks` we can improve the load balancing, and thus the performance, by giving the Julia's dynamic scheduler more tasks ("units of work") to balance out:
+However, by increasing `nchunks > nthreads()` we can give the dynamic scheduler more tasks ("units of work") to balance out and improve the load balancing. In this case, the difference between `:batch` and `:scatter` chunking becomes negligible.
 
 ```julia
-julia> @btime uneven_workload_spawn($x, $work_load; nchunks=64, chunk_type=:batch)
-  603.476 μs (398 allocations: 38.83 KiB)
--1.5503788131612682e8
-```
+julia> @btime uneven_workload_spawn($x, $work_load; nchunks=8*nthreads(), chunk_type=:batch);
+  603.830 μs (597 allocations: 53.30 KiB)
 
-Note that the same does not work when using `@threads`, because the first `8` chunks will noneless be assigned to the same thread (because of the automatic interal "chunking"):
-
-```julia
-julia> @btime uneven_workload_threads($x, $work_load; nchunks=64, chunk_type=:batch)
-  1.451 ms (47 allocations: 5.08 KiB)
--1.5503788131612682e8
+julia> @btime uneven_workload_spawn($x, $work_load; nchunks=8*nthreads(), chunk_type=:scatter);
+  601.519 μs (597 allocations: 53.30 KiB)
 ```
 
 ## Lower-level `getchunk` function 
@@ -213,11 +208,6 @@ getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 ```
 
 that returns the range of indexes corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
-
-!!! note
-    The `getchunk` function is available in version 2 of the package. In version 1 it was named `chunks`. 
-
-### Example: chunking variants
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `type = :batch` option):
@@ -249,33 +239,32 @@ julia> getchunk(x, 2, 3, :scatter)
 julia> getchunk(x, 3, 3, :scatter)
 3:3:6
 ```
-### Example
+
+### Example: `getchunk` usage
 
 ```julia
 julia> using BenchmarkTools
 
 julia> using ChunkSplitters
 
-julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
-           s = fill(zero(eltype(x)), nchunks)
-           Threads.@threads for ichunk in 1:nchunks
-               for i in getchunk(x, ichunk, nchunks)
-                   s[ichunk] += f(x[i])
+julia> function sum_parallel_getchunk(f, x; nchunks=Threads.nthreads())
+           t = map(1:nchunks) do ichunk
+               Threads.@spawn begin
+                   idcs = getchunk(x, ichunk, nchunks)
+                   sum(f, @view x[idcs])
                end
            end
-           return sum(s)
+           return sum(fetch.(t))
        end
 
-julia> x = rand(10^7);
+julia> x = rand(10^8);
 
 julia> Threads.nthreads()
-6
+12
 
-julia> @btime sum(x -> log(x)^7, $x)
-  238.039 ms (0 allocations: 0 bytes)
--5.062317099586189e10
+julia> @btime sum(x -> log(x)^7, $x);
+  1.363 s (0 allocations: 0 bytes)
 
-julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads())
-  81.112 ms (38 allocations: 3.27 KiB)
--5.062317099581316e10
+julia> @btime sum_parallel_getchunk(x -> log(x)^7, $x; nchunks=Threads.nthreads());
+  121.651 ms (100 allocations: 7.31 KiB)
 ```
