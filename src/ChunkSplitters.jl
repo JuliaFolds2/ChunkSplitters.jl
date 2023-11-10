@@ -14,7 +14,7 @@ over the chunks of a collection in a multi-threaded manner.
 ## Example
 
 ```julia-repl
-julia> using ChunkSplitters
+julia> using ChunkSplitters 
 
 julia> x = rand(7);
 
@@ -56,7 +56,14 @@ end
 
 import Base: length, eltype
 length(c::Chunk) = c.nchunks
-eltype(::Chunk) = UnitRange{Int}
+eltype(::Chunk) = Tuple{StepRange{Int,Int},Int}
+
+@testitem "length, eltype" begin
+    x = rand(10)
+    @test typeof(first(chunks(x, 5))) == Tuple{StepRange{Int64,Int64},Int64}
+    @test eltype(chunks(x, 5)) == Tuple{StepRange{Int64,Int64},Int64}
+    @test length(chunks(x, 5)) == 5
+end
 
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
@@ -87,13 +94,10 @@ end
     getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 
 Function that returns a range of indexes of `array`, given the number of chunks in
-which the array is to be split, `nchunks`, and the current chunk number `ichunk`.
+which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
 
 If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range
-is scattered over the array.
-
-!!! note
-    The `getchunk` function is available in version 2 of the package. In version 1 it was named `chunks`.
+is scattered over the array. 
 
 ## Example
 
@@ -227,8 +231,6 @@ end
     @test first(c) == (1:2, 1)
     @test last(c) == (5:5, 4)
     @test c[2] == (3:3, 2)
-    @test length(c) == 4
-    @test eltype(c) == UnitRange{Int64}
     for (ic, c) in enumerate(chunks(1:10, 2))
         if ic == 1
             @test c == (1:1:5, 1)
@@ -240,24 +242,19 @@ end
 
 @testitem "chunk sizes" begin
     using ChunkSplitters
-
     # Sanity test for nchunks < array_length
     c = chunks(1:10, 2)
     @test length(c) == 2
-
     # When nchunks > array_length, we shouldn't create more chunks than array_length
     c = chunks(1:10, 20)
     @test length(c) == 10
-
     # And we shouldn't be able to get an out-of-bounds chunk
     @test_throws ArgumentError chunks(1:10, 20, 40)
-
-
 end
 
 @testitem "return type" begin
-    @test typeof(getchunk(1:10, 1, 2, :batch)) == StepRange{Int64, Int64}
-    @test typeof(getchunk(1:10, 1, 2, :scatter)) == StepRange{Int64, Int64}
+    @test typeof(getchunk(1:10, 1, 2, :batch)) == StepRange{Int64,Int64}
+    @test typeof(getchunk(1:10, 1, 2, :scatter)) == StepRange{Int64,Int64}
     function mwe(ichunk=2, nchunks=5, n=10)
         xs = collect(1:n)
         ys = collect(1:n)
