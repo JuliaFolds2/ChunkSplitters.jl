@@ -60,8 +60,8 @@ eltype(::Chunk) = Tuple{StepRange{Int,Int},Int}
 
 @testitem "length, eltype" begin
     x = rand(10)
-    @test typeof(first(chunks(x, 5))) == Tuple{StepRange{Int64,Int64},Int64}
-    @test eltype(chunks(x, 5)) == Tuple{StepRange{Int64,Int64},Int64}
+    @test typeof(first(chunks(x, 5))) == Tuple{StepRange{Int,Int},Int}
+    @test eltype(chunks(x, 5)) == Tuple{StepRange{Int,Int},Int}
     @test length(chunks(x, 5)) == 5
 end
 
@@ -253,8 +253,8 @@ end
 end
 
 @testitem "return type" begin
-    @test typeof(getchunk(1:10, 1, 2, :batch)) == StepRange{Int64,Int64}
-    @test typeof(getchunk(1:10, 1, 2, :scatter)) == StepRange{Int64,Int64}
+    @test typeof(getchunk(1:10, 1, 2, :batch)) == StepRange{Int,Int}
+    @test typeof(getchunk(1:10, 1, 2, :scatter)) == StepRange{Int,Int}
     function mwe(ichunk=2, nchunks=5, n=10)
         xs = collect(1:n)
         ys = collect(1:n)
