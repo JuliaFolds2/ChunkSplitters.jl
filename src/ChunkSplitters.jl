@@ -58,13 +58,6 @@ import Base: length, eltype
 length(c::Chunk) = c.nchunks
 eltype(::Chunk) = Tuple{StepRange{Int,Int},Int}
 
-@testitem "length, eltype" begin
-    x = rand(10)
-    @test typeof(first(chunks(x, 5))) == Tuple{StepRange{Int,Int},Int}
-    @test eltype(chunks(x, 5)) == Tuple{StepRange{Int,Int},Int}
-    @test length(chunks(x, 5)) == 5
-end
-
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.nchunks
@@ -250,6 +243,10 @@ end
     @test length(c) == 10
     # And we shouldn't be able to get an out-of-bounds chunk
     @test_throws ArgumentError chunks(1:10, 20, 40)
+    @test length(chunks(zeros(15), 5)) == 5
+    @test length(chunks(zeros(15), 5)[1]) == 2
+    @test length(chunks(zeros(15), 5)[1][1]) == 3
+    @test length(chunks(zeros(15), 5)[1][2]) == 1
 end
 
 @testitem "return type" begin
@@ -264,6 +261,9 @@ end
     end
     @test @inferred mwe() == zip(3:1:4, 3:1:4)
     @test_throws ArgumentError getchunk(1:10, 1, 2, :error)
+    x = rand(10)
+    @test typeof(first(chunks(x, 5))) == Tuple{StepRange{Int,Int},Int}
+    @test eltype(chunks(x, 5)) == Tuple{StepRange{Int,Int},Int}
 end
 
 end # module ChunkSplitters
