@@ -243,10 +243,10 @@ end
     @test length(c) == 10
     # And we shouldn't be able to get an out-of-bounds chunk
     @test_throws ArgumentError chunks(1:10, 20, 40)
-    @test length(chunks(zeros(15), 5)) == 5
-    @test length(chunks(zeros(15), 5)[1]) == 2
-    @test length(chunks(zeros(15), 5)[1][1]) == 3
-    @test length(chunks(zeros(15), 5)[1][2]) == 1
+    @test length(chunks(zeros(15), 5)) == 5 # number of chunks
+    @test length(chunks(zeros(15), 5)[1]) == 2 # the return tuple
+    @test length(chunks(zeros(15), 5)[1][1]) == 3 # the length of each chunk
+    @test length(chunks(zeros(15), 5)[1][2]) == 1 # the chunk index
 end
 
 @testitem "return type" begin
