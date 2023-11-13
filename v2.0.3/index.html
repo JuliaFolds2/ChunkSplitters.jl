@@ -63,9 +63,9 @@ julia&gt; lineplot(work_load; xlabel=&quot;task&quot;, ylabel=&quot;workload&quo
 julia&gt; function uneven_workload_threads(x, work_load; nchunks::Int, chunk_type::Symbol)
            chunk_sums = Vector{eltype(x)}(undef, nchunks)
            @threads for (idcs, ichunk) in chunks(work_load, nchunks, chunk_type)
-               s = zero(eltype(x))
+               local s = zero(eltype(x))
                for i in idcs
-                   s += sum(y -&gt; log(y)^7, 1:work_load[i])
+                   s += sum(j -&gt; log(x[j])^7, 1:work_load[i])
                end
                chunk_sums[ichunk] = s
            end
@@ -83,7 +83,7 @@ julia&gt; @btime uneven_workload_threads($x, $work_load; nchunks=8*nthreads(), c
   632.149 μs (75 allocations: 7.91 KiB)</code></pre><h3 id="Using-@spawn"><a class="docs-heading-anchor" href="#Using-@spawn">Using <code>@spawn</code></a><a id="Using-@spawn-1"></a><a class="docs-heading-anchor-permalink" href="#Using-@spawn" title="Permalink"></a></h3><p>We can use <code>@spawn</code> to get &quot;proper&quot; load balancing through Julia&#39;s task scheduler. The spawned tasks, each associated with a chunk of the <code>work_load</code> array, will be dynamically scheduled at runtime. If there are enough tasks/chunks, the scheduler can map them to Julia threads in such a way that the overall workload per Julia thread is balanced.</p><p>Here is the implementation that we&#39;ll consider.</p><pre><code class="language-julia hljs">julia&gt; function uneven_workload_spawn(x, work_load; nchunks::Int, chunk_type::Symbol)
            ts = map(chunks(work_load, nchunks, chunk_type)) do (idcs, ichunk)
                @spawn begin
-                   s = zero(eltype(x))
+                   local s = zero(eltype(x))
                    for i in idcs
                        s += sum(log(x[j])^7 for j in 1:work_load[i])
                    end
@@ -124,7 +124,7 @@ julia&gt; using ChunkSplitters
 julia&gt; function sum_parallel_getchunk(f, x; nchunks=Threads.nthreads())
            t = map(1:nchunks) do ichunk
                Threads.@spawn begin
-                   idcs = getchunk(x, ichunk, nchunks)
+                   local idcs = getchunk(x, ichunk, nchunks)
                    sum(f, @view x[idcs])
                end
            end
@@ -140,4 +140,4 @@ julia&gt; @btime sum(x -&gt; log(x)^7, $x);
   1.363 s (0 allocations: 0 bytes)
 
 julia&gt; @btime sum_parallel_getchunk(x -&gt; log(x)^7, $x; nchunks=Threads.nthreads());
-  121.651 ms (100 allocations: 7.31 KiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="references/">References »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.2 on <span class="colophon-date" title="Friday 10 November 2023 11:48">Friday 10 November 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  121.651 ms (100 allocations: 7.31 KiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="references/">References »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.2 on <span class="colophon-date" title="Monday 13 November 2023 13:40">Monday 13 November 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
