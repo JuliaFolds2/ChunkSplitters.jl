@@ -9,30 +9,45 @@ export chunks, getchunk
 
 This function returns an iterable object that will split the *indices* of `array` into
 to `nchunks` chunks. `type` can be `:batch` or `:scatter`. It can be used to directly iterate
-over the chunks of a collection in a multi-threaded manner.
+over the chunks of a collection in a multi-threaded manner. 
 
-## Example
+The use of `enumerate` provides an indexing of the chunks that can be used to 
+index shared work arrays, buffers, or output collections, without the need of 
+the thread id of the current thread.
 
-```julia-repl
+## Examples
+
+```jldoctest
 julia> using ChunkSplitters 
 
 julia> x = rand(7);
 
-julia> for i in chunks(x, 3, :batch)
-           @show Threads.threadid(), collect(i)
-       end
-(Threads.threadid(), collect(i)) = (6, [1, 2, 3])
-(Threads.threadid(), collect(i)) = (8, [4, 5])
-(Threads.threadid(), collect(i)) = (7, [6, 7])
+julia> collect(chunks(x, 3))
+3-element Vector{StepRange{Int64, Int64}}:
+ 1:1:3
+ 4:1:5
+ 6:1:7
 
-julia> for i in chunks(x, 3, :scatter)
-           @show Threads.threadid(), collect(i)
-       end
-(Threads.threadid(), collect(i)) = (2, [1, 4, 7])
-(Threads.threadid(), collect(i)) = (11, [2, 5])
-(Threads.threadid(), collect(i)) = (3, [3, 6])
+julia> collect(enumerate(chunks(x, 3)))
+3-element Vector{Tuple{Int64, Any}}:
+ (1, 1:1:3)
+ (2, 4:1:5)
+ (3, 6:1:7)
 ```
 
+This iterator works for OffsetArrays:
+
+```jldoctest
+julia> using ChunkSplitters, OffsetArrays
+
+julia> x = OffsetArray(1:7, -1:5);
+
+julia> collect(chunks(x,3))
+3-element Vector{StepRange{Int64, Int64}}:
+ -1:1:1
+ 2:1:3
+ 4:1:5
+```
 
 """
 function chunks end
@@ -56,15 +71,12 @@ end
 
 import Base: length, eltype
 length(c::Chunk) = c.nchunks
-eltype(::Chunk) = Tuple{StepRange{Int,Int},Int}
+eltype(::Chunk) = StepRange{Int,Int}
 
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.nchunks
-getindex(c::Chunk, i::Int) = (getchunk(c.x, i, c.nchunks, c.type), i)
-
-import Base: collect
-collect(c::Chunk) = [(getchunk(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchunks]
+getindex(c::Chunk, i::Int) = getchunk(c.x, i, c.nchunks, c.type)
 
 #
 # Iteration of the chunks
@@ -72,12 +84,63 @@ collect(c::Chunk) = [(getchunk(c.x, i, c.nchunks, c.type), i) for i in 1:c.nchun
 import Base: iterate
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        return ((getchunk(c.x, 1, c.nchunks, c.type), 1), 1)
+        return (getchunk(c.x, 1, c.nchunks, c.type), 1)
     elseif state < c.nchunks
-        return ((getchunk(c.x, state + 1, c.nchunks, c.type), state + 1), state + 1)
+        return (getchunk(c.x, state + 1, c.nchunks, c.type), state + 1)
     else
         return nothing
     end
+end
+
+#
+# Iteration over chunks enumeration: usually enumerate is not compatible
+# with `@threads`, because of the lack of the general definition of 
+# `firstindex`, `lastindex`, and `getindex` for `Base.Iterators.Enumerate{<:Any}`. Thus,
+# to avoid using the internal `.itr` property of `Enumerate`, we redefine
+# the `iterate` method for `ChunkSplitters.Enumerate{<:Chunk}`.
+#
+struct Enumerate{I<:Chunk}
+    itr::I
+end
+enumerate(c::Chunk) = Enumerate(c)
+
+import Base: iterate
+function iterate(ec::Enumerate{<:Chunk}, state=nothing)
+    if isnothing(state)
+        return (1, getchunk(ec.itr.x, 1, ec.itr.nchunks, ec.itr.type))
+    elseif state < ec.itr.nchunks
+        return (state + 1, getchunk(ec.itr.x, state + 1, ec.itr.nchunks, ec.itr.type))
+    else
+        return nothing
+    end
+end
+
+# These methods are required for threading over enumerate(chunks(...))
+firstindex(::Base.Iterators.Enumerate{<:Chunk}) = 1
+lastindex(ec::Base.Iterators.Enumerate{<:Chunk}) = length(ec.itr)
+getindex(ec::Base.Iterators.Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i, ec.itr.nchunks, ec.itr.type))
+
+@testitem "enumerate chunks" begin
+    using ChunkSplitters
+    using Base.Threads
+    @test collect(enumerate(chunks(1:10, 2))) == [(1, 1:1:5), (2, 6:1:10)]
+    x = rand(100)
+    s = zeros(nthreads())
+    @threads for (ichunk, range) in enumerate(chunks(x, nthreads()))
+        for i in range
+            s[ichunk] += x[i]
+        end
+    end
+    @test sum(s) ≈ sum(x)
+    s = zeros(nthreads())
+    @sync for (ichunk, range) in enumerate(chunks(x, nthreads()))
+        @spawn begin 
+            for i in range
+                s[ichunk] += x[i]
+            end
+        end
+    end
+    @test sum(s) ≈ sum(x)
 end
 
 #
@@ -97,24 +160,28 @@ is scattered over the array.
 For example, if we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `type = :batch` option):
 
-```julia-repl
+```jldoctest
 julia> using ChunkSplitters
 
 julia> x = rand(7);
 
 julia> getchunk(x, 1, 3)
-1:3
+1:1:3
 
 julia> getchunk(x, 2, 3)
-4:5
+4:1:5
 
 julia> getchunk(x, 3, 3)
-6:7
+6:1:7
 ```
 
 And using `type = :scatter`, we have:
 
-```julia-repl
+```jldoctest
+julia> using ChunkSplitters
+
+julia> x = rand(7);
+
 julia> getchunk(x, 1, 3, :scatter)
 1:3:7
 
@@ -159,7 +226,7 @@ function test_chunks(; array_length, nchunks, type, result, return_ranges=false)
 end
 function sum_parallel(x, nchunks, type)
     s = fill(zero(eltype(x)), nchunks)
-    Threads.@threads for (range, ichunk) in chunks(x, nchunks, type)
+    Threads.@threads for (ichunk, range) in enumerate(chunks(x, nchunks, type))
         for i in range
             s[ichunk] += x[i]
         end
@@ -171,6 +238,15 @@ function test_sum(; array_length, nchunks, type)
     return sum_parallel(x, nchunks, type) ≈ sum(x)
 end
 end # module Testing
+
+@testitem "argument errors" begin
+    using ChunkSplitters
+    @test_throws ArgumentError chunks(1:10, 2, :not_batch)
+    @test_throws ArgumentError chunks(1:10, 0)
+    @test_throws ArgumentError chunks(1:10, -1)
+    @test_throws MethodError chunks(1, 1)
+end
+
 
 @testitem ":scatter" begin
     using ChunkSplitters
@@ -192,7 +268,7 @@ end # module Testing
     @test test_sum(; array_length=15, nchunks=4, type=:scatter)
     @test test_sum(; array_length=117, nchunks=4, type=:scatter)
     x = OffsetArray(1:7, -1:5)
-    @test collect.(getindex.(collect(chunks(x, 3, :scatter)), 1)) == [[-1, 2, 5], [0, 3], [1, 4]]
+    @test collect.(chunks(x, 3, :scatter)) == [[-1, 2, 5], [0, 3], [1, 4]]
 end
 
 @testitem ":batch" begin
@@ -215,20 +291,20 @@ end
     @test test_sum(; array_length=15, nchunks=4, type=:batch)
     @test test_sum(; array_length=117, nchunks=4, type=:batch)
     x = OffsetArray(1:7, -1:5)
-    @test collect.(getindex.(collect(chunks(x, 3, :batch)), 1)) == [[-1, 0, 1], [2, 3], [4, 5]]
+    @test collect.(chunks(x, 3, :batch)) == [[-1, 0, 1], [2, 3], [4, 5]]
 end
 
 @testitem "indexing" begin
     using ChunkSplitters
     c = chunks(1:5, 4)
-    @test first(c) == (1:2, 1)
-    @test last(c) == (5:5, 4)
-    @test c[2] == (3:3, 2)
+    @test first(c) == 1:1:2
+    @test last(c) == 5:1:5
+    @test c[2] == 3:1:3
     for (ic, c) in enumerate(chunks(1:10, 2))
         if ic == 1
-            @test c == (1:1:5, 1)
+            @test c == 1:1:5
         elseif ic == 2
-            @test c == (6:1:10, 2)
+            @test c == 6:1:10
         end
     end
 end
@@ -242,11 +318,8 @@ end
     c = chunks(1:10, 20)
     @test length(c) == 10
     # And we shouldn't be able to get an out-of-bounds chunk
-    @test_throws ArgumentError chunks(1:10, 20, 40)
     @test length(chunks(zeros(15), 5)) == 5 # number of chunks
-    @test length(chunks(zeros(15), 5)[1]) == 2 # the return tuple
-    @test length(chunks(zeros(15), 5)[1][1]) == 3 # the length of each chunk
-    @test length(chunks(zeros(15), 5)[1][2]) == 1 # the chunk index
+    @test all(length.(chunks(zeros(15), 5)) .== 3) # the length of each chunk
 end
 
 @testitem "return type" begin
@@ -262,8 +335,8 @@ end
     @test @inferred mwe() == zip(3:1:4, 3:1:4)
     @test_throws ArgumentError getchunk(1:10, 1, 2, :error)
     x = rand(10)
-    @test typeof(first(chunks(x, 5))) == Tuple{StepRange{Int,Int},Int}
-    @test eltype(chunks(x, 5)) == Tuple{StepRange{Int,Int},Int}
+    @test typeof(first(chunks(x, 5))) == StepRange{Int,Int}
+    @test eltype(chunks(x, 5)) == StepRange{Int,Int}
 end
 
 end # module ChunkSplitters
