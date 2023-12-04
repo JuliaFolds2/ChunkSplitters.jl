@@ -122,7 +122,7 @@ getindex(ec::Base.Iterators.Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x,
 
 @testitem "enumerate chunks" begin
     using ChunkSplitters
-    using Base.Threads
+    using Base.Threads: @spawn, @threads, nthreads
     @test collect(enumerate(chunks(1:10, 2))) == [(1, 1:1:5), (2, 6:1:10)]
     x = rand(100)
     s = zeros(nthreads())
