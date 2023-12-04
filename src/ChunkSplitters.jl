@@ -134,7 +134,7 @@ getindex(ec::Base.Iterators.Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x,
     @test sum(s) ≈ sum(x)
     s = zeros(nthreads())
     @sync for (ichunk, range) in enumerate(chunks(x, nthreads()))
-        @spawn begin 
+        @spawn begin
             for i in range
                 s[ichunk] += x[i]
             end
