@@ -8,6 +8,7 @@ makedocs(
     sitename="ChunkSplitters.jl",
     pages = [
         "Home" => "index.md",
+        "Load balancing" => "load_balancing.md",
         "References" => "references.md",
     ]
 )
