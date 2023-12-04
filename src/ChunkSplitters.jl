@@ -108,18 +108,19 @@ enumerate(c::Chunk) = Enumerate(c)
 import Base: iterate
 function iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
-        return (1, getchunk(ec.itr.x, 1, ec.itr.nchunks, ec.itr.type))
+        return ((1, getchunk(ec.itr.x, 1, ec.itr.nchunks, ec.itr.type)), 1)
     elseif state < ec.itr.nchunks
-        return (state + 1, getchunk(ec.itr.x, state + 1, ec.itr.nchunks, ec.itr.type))
+        return ((state + 1, getchunk(ec.itr.x, state + 1, ec.itr.nchunks, ec.itr.type)), state + 1)
     else
         return nothing
     end
 end
 
 # These methods are required for threading over enumerate(chunks(...))
-firstindex(::Base.Iterators.Enumerate{<:Chunk}) = 1
-lastindex(ec::Base.Iterators.Enumerate{<:Chunk}) = length(ec.itr)
-getindex(ec::Base.Iterators.Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i, ec.itr.nchunks, ec.itr.type))
+firstindex(::Enumerate{<:Chunk}) = 1
+lastindex(ec::Enumerate{<:Chunk}) = ec.itr.nchunks
+getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i, ec.itr.nchunks, ec.itr.type))
+length(ec::Enumerate{<:Chunk}) = ec.itr.nchunks
 
 @testitem "enumerate chunks" begin
     using ChunkSplitters
@@ -299,9 +300,13 @@ end
     using ChunkSplitters
     c = chunks(1:5, 4)
     @test firstindex(c) == 1
+    @test firstindex(enumerate(c)) == 1
     @test lastindex(c) == 4
+    @test lastindex(enumerate(c)) == 4
     @test first(c) == 1:1:2
+    @test first(enumerate(c)) == (1, 1:1:2)
     @test last(c) == 5:1:5
+    @test last(enumerate(c)) == (4, 5:1:5)
     @test c[2] == 3:1:3
     for (ic, c) in enumerate(chunks(1:10, 2))
         if ic == 1
