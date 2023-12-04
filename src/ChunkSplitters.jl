@@ -298,6 +298,8 @@ end
 @testitem "indexing" begin
     using ChunkSplitters
     c = chunks(1:5, 4)
+    @test firstindex(c) == 1
+    @test lastindex(c) == 4
     @test first(c) == 1:1:2
     @test last(c) == 5:1:5
     @test c[2] == 3:1:3
