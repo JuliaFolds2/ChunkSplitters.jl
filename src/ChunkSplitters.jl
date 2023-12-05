@@ -29,7 +29,7 @@ julia> collect(chunks(x, 3))
  6:1:7
 
 julia> collect(enumerate(chunks(x, 3)))
-3-element Vector{Tuple{Int64, Any}}:
+3-element Vector{Tuple{Int64, StepRange{Int64, Int64}}}:
  (1, 1:1:3)
  (2, 4:1:5)
  (3, 6:1:7)
@@ -84,12 +84,13 @@ getindex(c::Chunk, i::Int) = getchunk(c.x, i, c.nchunks, c.type)
 import Base: iterate
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        return (getchunk(c.x, 1, c.nchunks, c.type), 1)
+        chunk = getchunk(c.x, 1, c.nchunks, c.type)
+        return (chunk, 1)
     elseif state < c.nchunks
-        return (getchunk(c.x, state + 1, c.nchunks, c.type), state + 1)
-    else
-        return nothing
+        chunk = getchunk(c.x, state + 1, c.nchunks, c.type)
+        return (chunk, state + 1)
     end
+    return nothing
 end
 
 #
@@ -108,13 +109,16 @@ enumerate(c::Chunk) = Enumerate(c)
 import Base: iterate
 function iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
-        return ((1, getchunk(ec.itr.x, 1, ec.itr.nchunks, ec.itr.type)), 1)
+        chunk = getchunk(ec.itr.x, 1, ec.itr.nchunks, ec.itr.type)
+        return ((1, chunk), 1)
     elseif state < ec.itr.nchunks
-        return ((state + 1, getchunk(ec.itr.x, state + 1, ec.itr.nchunks, ec.itr.type)), state + 1)
-    else
-        return nothing
+        state = state + 1
+        chunk = getchunk(ec.itr.x, state, ec.itr.nchunks, ec.itr.type)
+        return ((state, chunk), state)
     end
+    return nothing
 end
+eltype(::Enumerate{<:Chunk}) = Tuple{Int, StepRange{Int,Int}}
 
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
@@ -143,6 +147,9 @@ length(ec::Enumerate{<:Chunk}) = ec.itr.nchunks
         end
     end
     @test sum(s) ≈ sum(x)
+    @test collect(enumerate(chunks(rand(7), 3))) == 
+        Tuple{Int64, StepRange{Int64, Int64}}[(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)] 
+    @test eltype(enumerate(chunks(rand(7), 3))) == Tuple{Int64, StepRange{Int64, Int64}}
 end
 
 #
