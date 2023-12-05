@@ -118,7 +118,7 @@ function iterate(ec::Enumerate{<:Chunk}, state=nothing)
     end
     return nothing
 end
-eltype(::Enumerate{<:Chunk}) = Tuple{Int, StepRange{Int,Int}}
+eltype(::Enumerate{<:Chunk}) = Tuple{Int,StepRange{Int,Int}}
 
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
@@ -129,7 +129,6 @@ length(ec::Enumerate{<:Chunk}) = ec.itr.nchunks
 @testitem "enumerate chunks" begin
     using ChunkSplitters
     using Base.Threads: @spawn, @threads, nthreads
-    @test collect(enumerate(chunks(1:10, 2))) == [(1, 1:1:5), (2, 6:1:10)]
     x = rand(100)
     s = zeros(nthreads())
     @threads for (ichunk, range) in enumerate(chunks(x, nthreads()))
@@ -147,9 +146,10 @@ length(ec::Enumerate{<:Chunk}) = ec.itr.nchunks
         end
     end
     @test sum(s) ≈ sum(x)
-    @test collect(enumerate(chunks(rand(7), 3))) == 
-        Tuple{Int64, StepRange{Int64, Int64}}[(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)] 
-    @test eltype(enumerate(chunks(rand(7), 3))) == Tuple{Int64, StepRange{Int64, Int64}}
+    @test collect(enumerate(chunks(1:10, 2))) == [(1, 1:1:5), (2, 6:1:10)]
+    @test collect(enumerate(chunks(rand(7), 3))) ==
+          Tuple{Int64,StepRange{Int64,Int64}}[(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)]
+    @test eltype(enumerate(chunks(rand(7), 3))) == Tuple{Int64,StepRange{Int64,Int64}}
 end
 
 #
