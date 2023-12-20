@@ -105,8 +105,7 @@ struct Enumerate{I<:Chunk}
 end
 Base.enumerate(c::Chunk) = Enumerate(c)
 
-import Base: iterate
-function iterate(ec::Enumerate{<:Chunk}, state=nothing)
+function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
         chunk = getchunk(ec.itr.x, 1, ec.itr.nchunks, ec.itr.type)
         return ((1, chunk), 1)
