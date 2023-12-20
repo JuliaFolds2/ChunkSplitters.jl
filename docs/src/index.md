@@ -14,8 +14,8 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 ## The `chunks` iterator
 
 !!! compat
-    In ChunkSplitters version 3.0 the iteration with `chunks` returns the ranges of indexes only. The retrieve
-    the chunk indexes, use `enumerate(chunks(...))`. 
+    In ChunkSplitters version 3.0 the iteration with `chunks` returns the ranges of indices only. The retrieve
+    the chunk indices, use `enumerate(chunks(...))`. 
 
 The main interface is the `chunks` iterator, and the enumeration of chunks, with `enumerate`.
 
@@ -136,7 +136,7 @@ The package also provides a lower-level `getchunk` function:
 ```julia-repl
 getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 ```
-that returns the range of indexes corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
+that returns the range of indices corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `type = :batch` option):

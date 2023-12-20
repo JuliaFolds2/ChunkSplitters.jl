@@ -156,7 +156,7 @@ end
 """
     getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
 
-Function that returns a range of indexes of `array`, given the number of chunks in
+Function that returns a range of indices of `array`, given the number of chunks in
 which the array is to be split, `nchunks`, and the current chunk number `ichunk`. 
 
 If `type == :batch`, the ranges are consecutive. If `type == :scatter`, the range
