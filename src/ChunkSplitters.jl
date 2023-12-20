@@ -7,13 +7,13 @@ export chunks, getchunk
 """
     chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
 
-This function returns an iterable object that will split the *indices* of `array` into
-to `nchunks` chunks. `type` can be `:batch` or `:scatter`. It can be used to directly iterate
-over the chunks of a collection in a multi-threaded manner. 
+Returns an iterator that splits the *indices* of `array` into `nchunks`-many chunks.
+The iterator can be used to process chunks of `array` one after another or in parallel (e.g. with `@threads`).
+The optional argument `type` can be `:batch` (default) or `:scatter`.
 
-The use of `enumerate` provides an indexing of the chunks that can be used to 
-index shared work arrays, buffers, or output collections, without the need of 
-the thread id of the current thread.
+If you need a running chunk index, e.g. to index into a buffer that is shared 
+between chunks, you can combine `chunks` with `enumerate`. In particular,
+`enumerate(chunks(...))` can be used in conjuction with `@threads`.
 
 ## Examples
 
