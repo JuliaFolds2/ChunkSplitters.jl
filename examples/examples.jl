@@ -44,11 +44,11 @@ function uneven_workload_threads(x, work_load; nchunks::Int, chunk_type::Symbol)
     return sum(chunk_sums)
 end
 
-@btime uneven_workload_threads($x, $work_load; nchunks=nthreads(), chunk_distribution=:batch)
-@btime uneven_workload_threads($x, $work_load; nchunks=nthreads(), chunk_distribution=:scatter)
+@btime uneven_workload_threads($x, $work_load; nchunks=nthreads(), chunk_split=:batch)
+@btime uneven_workload_threads($x, $work_load; nchunks=nthreads(), chunk_split=:scatter)
 
-@btime uneven_workload_threads($x, $work_load; nchunks=8 * nthreads(), chunk_distribution=:batch)
-@btime uneven_workload_threads($x, $work_load; nchunks=8 * nthreads(), chunk_distribution=:scatter)
+@btime uneven_workload_threads($x, $work_load; nchunks=8 * nthreads(), chunk_split=:batch)
+@btime uneven_workload_threads($x, $work_load; nchunks=8 * nthreads(), chunk_split=:scatter)
 
 ## @spawn
 function uneven_workload_spawn(x, work_load; nchunks::Int, chunk_type::Symbol)
@@ -64,8 +64,8 @@ function uneven_workload_spawn(x, work_load; nchunks::Int, chunk_type::Symbol)
     return sum(fetch.(ts))
 end
 
-@btime uneven_workload_spawn($x, $work_load; nchunks=nthreads(), chunk_distribution=:batch)
-@btime uneven_workload_spawn($x, $work_load; nchunks=nthreads(), chunk_distribution=:scatter)
+@btime uneven_workload_spawn($x, $work_load; nchunks=nthreads(), chunk_split=:batch)
+@btime uneven_workload_spawn($x, $work_load; nchunks=nthreads(), chunk_split=:scatter)
 
-@btime uneven_workload_spawn($x, $work_load; nchunks=8 * nthreads(), chunk_distribution=:batch)
-@btime uneven_workload_spawn($x, $work_load; nchunks=8 * nthreads(), chunk_distribution=:scatter)
+@btime uneven_workload_spawn($x, $work_load; nchunks=8 * nthreads(), chunk_split=:batch)
+@btime uneven_workload_spawn($x, $work_load; nchunks=8 * nthreads(), chunk_split=:scatter)
