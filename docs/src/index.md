@@ -39,19 +39,19 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> for idxs in chunks(x, 3, :batch)
-           @show idxs
+julia> for inds in chunks(x, 3, :batch)
+           @show inds
        end
-idxs = 1:1:3
-idxs = 4:1:5
-idxs = 6:1:7
+inds = 1:1:3
+inds = 4:1:5
+inds = 6:1:7
 
-julia> for idxs in chunks(x, 3, :scatter)
-           @show idxs
+julia> for inds in chunks(x, 3, :scatter)
+           @show inds
        end
-idxs = 1:3:7
-idxs = 2:3:5
-idxs = 3:3:6
+inds = 1:3:7
+inds = 2:3:5
+inds = 3:3:6
 ```
 
 The chunk indices can be retrieved with the `enumerate` function, which is specialized
@@ -62,12 +62,12 @@ julia> using ChunkSplitters, Base.Threads
 
 julia> x = rand(7);
 
-julia> @threads for (ichunk, idxs) in enumerate(chunks(x, 3))
-           @show ichunk, idxs
+julia> @threads for (ichunk, inds) in enumerate(chunks(x, 3))
+           @show ichunk, inds
        end
-(ichunk, idxs) = (1, 1:1:3)
-(ichunk, idxs) = (2, 4:1:5)
-(ichunk, idxs) = (3, 6:1:7)
+(ichunk, inds) = (1, 1:1:3)
+(ichunk, inds) = (2, 4:1:5)
+(ichunk, inds) = (3, 6:1:7)
 ```
 
 ## Simple multi-threaded example
@@ -80,8 +80,8 @@ julia> using BenchmarkTools
 julia> using ChunkSplitters
 
 julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
-           t = map(chunks(x, nchunks)) do idxs
-               Threads.@spawn sum(f, @view x[idxs])
+           t = map(chunks(x, nchunks)) do inds
+               Threads.@spawn sum(f, @view x[inds])
            end
            return sum(fetch.(t))
        end
@@ -116,8 +116,8 @@ julia> nchunks = nthreads();
 
 julia> chunk_sums = zeros(Int, nchunks);
 
-julia> @threads for (ichunk, idxs) in enumerate(chunks(x, nchunks))
-           chunk_sums[ichunk] += sum(@view x[idxs])
+julia> @threads for (ichunk, inds) in enumerate(chunks(x, nchunks))
+           chunk_sums[ichunk] += sum(@view x[inds])
        end
 
 julia> sum(chunk_sums)
@@ -183,8 +183,8 @@ julia> using ChunkSplitters
 julia> function sum_parallel_getchunk(f, x; nchunks=Threads.nthreads())
            t = map(1:nchunks) do ichunk
                Threads.@spawn begin
-                   local idxs = getchunk(x, ichunk, nchunks)
-                   sum(f, @view x[idxs])
+                   local inds = getchunk(x, ichunk, nchunks)
+                   sum(f, @view x[inds])
                end
            end
            return sum(fetch.(t))

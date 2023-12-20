@@ -43,9 +43,9 @@ julia> using Base.Threads, ChunkSplitters
 
 julia> function uneven_workload_threads(x, work_load; nchunks::Int, chunk_type::Symbol)
            chunk_sums = Vector{eltype(x)}(undef, nchunks)
-           @threads for (ichunk, idxs) in enumerate(chunks(work_load, nchunks, chunk_type))
+           @threads for (ichunk, inds) in enumerate(chunks(work_load, nchunks, chunk_type))
                local s = zero(eltype(x))
-               for i in idxs
+               for i in inds
                    s += sum(j -> log(x[j])^7, 1:work_load[i])
                end
                chunk_sums[ichunk] = s
@@ -86,10 +86,10 @@ Here is the implementation that we'll consider.
 
 ```julia-repl
 julia> function uneven_workload_spawn(x, work_load; nchunks::Int, chunk_type::Symbol)
-           ts = map(chunks(work_load, nchunks, chunk_type)) do idxs
+           ts = map(chunks(work_load, nchunks, chunk_type)) do inds
                @spawn begin
                    local s = zero(eltype(x))
-                   for i in idxs
+                   for i in inds
                        s += sum(log(x[j])^7 for j in 1:work_load[i])
                    end
                    s
