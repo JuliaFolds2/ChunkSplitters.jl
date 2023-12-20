@@ -135,25 +135,25 @@ julia> sum(chunk_sums)
 
 The package also provides a lower-level `getchunk` function:
 ```julia-repl
-getchunk(array::AbstractArray, ichunk::Int, n::Int, split::Symbol)
+getchunk(array::AbstractArray, ichunk::Int; n::Int, split::Symbol=:batch)
 ```
 that returns the range of indices corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
-into 3 chunks, we have (using the default `split = :batch` option):
+into 3 chunks, we have (using the default `split == :batch` option):
 
 ```jldoctest
 julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3)
+julia> getchunk(x, 1; n=3)
 1:1:3
 
-julia> getchunk(x, 2, 3)
+julia> getchunk(x, 2; n=3)
 4:1:5
 
-julia> getchunk(x, 3, 3)
+julia> getchunk(x, 3; n=3)
 6:1:7
 ```
 
@@ -164,13 +164,13 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3, :scatter)
+julia> getchunk(x, 1; n=3, split=:scatter)
 1:3:7
 
-julia> getchunk(x, 2, 3, :scatter)
+julia> getchunk(x, 2; n=3, split=:scatter)
 2:3:5
 
-julia> getchunk(x, 3, 3, :scatter)
+julia> getchunk(x, 3; n=3, split=:scatter)
 3:3:6
 ```
 
@@ -184,7 +184,7 @@ julia> using ChunkSplitters
 julia> function sum_parallel_getchunk(f, x; n=Threads.nthreads())
            t = map(1:n) do ichunk
                Threads.@spawn begin
-                   local inds = getchunk(x, ichunk, n)
+                   local inds = getchunk(x, ichunk; n=n)
                    sum(f, @view x[inds])
                end
            end

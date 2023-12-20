@@ -76,7 +76,7 @@ eltype(::Chunk) = StepRange{Int,Int}
 import Base: firstindex, lastindex, getindex
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.n
-getindex(c::Chunk, i::Int) = getchunk(c.x, i, c.n, c.split)
+getindex(c::Chunk, i::Int) = getchunk(c.x, i; n = c.n, split = c.split)
 
 #
 # Iteration of the chunks
@@ -84,10 +84,10 @@ getindex(c::Chunk, i::Int) = getchunk(c.x, i, c.n, c.split)
 import Base: iterate
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        chunk = getchunk(c.x, 1, c.n, c.split)
+        chunk = getchunk(c.x, 1; n = c.n, split = c.split)
         return (chunk, 1)
     elseif state < c.n
-        chunk = getchunk(c.x, state + 1, c.n, c.split)
+        chunk = getchunk(c.x, state + 1; n=c.n, split=c.split)
         return (chunk, state + 1)
     end
     return nothing
@@ -107,11 +107,11 @@ Base.enumerate(c::Chunk) = Enumerate(c)
 
 function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
-        chunk = getchunk(ec.itr.x, 1, ec.itr.n, ec.itr.split)
+        chunk = getchunk(ec.itr.x, 1; n=ec.itr.n, split=ec.itr.split)
         return ((1, chunk), 1)
     elseif state < ec.itr.n
         state = state + 1
-        chunk = getchunk(ec.itr.x, state, ec.itr.n, ec.itr.split)
+        chunk = getchunk(ec.itr.x, state; n=ec.itr.n, split=ec.itr.split)
         return ((state, chunk), state)
     end
     return nothing
@@ -121,7 +121,7 @@ eltype(::Enumerate{<:Chunk}) = Tuple{Int,StepRange{Int,Int}}
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
 lastindex(ec::Enumerate{<:Chunk}) = ec.itr.n
-getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i, ec.itr.n, ec.itr.split))
+getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i; n=ec.itr.n, split=ec.itr.split))
 length(ec::Enumerate{<:Chunk}) = ec.itr.n
 
 @testitem "enumerate chunks" begin
@@ -154,10 +154,10 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    getchunk(array::AbstractArray, i::Int, n::Int, split::Symbol=:batch)
+    getchunk(array::AbstractArray, i::Int; n::Int, split::Symbol=:batch)
 
 Function that returns a range of indices of `array`, given the number of chunks in
-which the array is to be split, `n`, and the current chunk number `ichunk`. 
+which the array is to be split, `n`, and the current chunk number `i`. 
 
 If `split == :batch`, the ranges are consecutive. If `split == :scatter`, the range
 is scattered over the array. 
@@ -172,13 +172,13 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3)
+julia> getchunk(x, 1; n=3)
 1:1:3
 
-julia> getchunk(x, 2, 3)
+julia> getchunk(x, 2; n=3)
 4:1:5
 
-julia> getchunk(x, 3, 3)
+julia> getchunk(x, 3; n=3)
 6:1:7
 ```
 
@@ -189,17 +189,17 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3, :scatter)
+julia> getchunk(x, 1; n=3, split=:scatter)
 1:3:7
 
-julia> getchunk(x, 2, 3, :scatter)
+julia> getchunk(x, 2; n=3, split=:scatter)
 2:3:5
 
-julia> getchunk(x, 3, 3, :scatter)
+julia> getchunk(x, 3; n=3, split=:scatter)
 3:3:6
 ```
 """
-function getchunk(array::AbstractArray, ichunk::Int, n::Int, split::Symbol=:batch)
+function getchunk(array::AbstractArray, ichunk::Int; n::Int, split::Symbol=:batch)
     ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks"))
     ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
     if split == :batch
@@ -224,7 +224,7 @@ end
 module Testing
 using ..ChunkSplitters
 function test_chunks(; array_length, n, split, result)
-    ranges = collect(getchunk(rand(Int, array_length), i, n, split) for i in 1:n)
+    ranges = collect(getchunk(rand(Int, array_length), i; n=n, split=split) for i in 1:n)
     all(ranges .== result)
 end
 function sum_parallel(x, n, split)
@@ -331,17 +331,17 @@ end
 end
 
 @testitem "return type" begin
-    @test typeof(getchunk(1:10, 1, 2, :batch)) == StepRange{Int,Int}
-    @test typeof(getchunk(1:10, 1, 2, :scatter)) == StepRange{Int,Int}
+    @test typeof(getchunk(1:10, 1; n=2, split=:batch)) == StepRange{Int,Int}
+    @test typeof(getchunk(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
     function mwe(ichunk=2, n=5, l=10)
         xs = collect(1:l)
         ys = collect(1:l)
-        cx = getchunk(xs, ichunk, n, :batch)
-        cy = getchunk(ys, ichunk, n, :batch)
+        cx = getchunk(xs, ichunk; n=n, split=:batch)
+        cy = getchunk(ys, ichunk; n=n, split=:batch)
         return Iterators.zip(cx, cy)
     end
     @test @inferred mwe() == zip(3:1:4, 3:1:4)
-    @test_throws ArgumentError getchunk(1:10, 1, 2, :error)
+    @test_throws ArgumentError getchunk(1:10, 1; n=2, split=:error)
     x = rand(10)
     @test typeof(first(chunks(x; n=5))) == StepRange{Int,Int}
     @test eltype(chunks(x; n=5)) == StepRange{Int,Int}
