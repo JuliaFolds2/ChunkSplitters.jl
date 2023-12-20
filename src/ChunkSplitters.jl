@@ -103,8 +103,7 @@ end
 struct Enumerate{I<:Chunk}
     itr::I
 end
-import Base: enumerate
-enumerate(c::Chunk) = Enumerate(c)
+Base.enumerate(c::Chunk) = Enumerate(c)
 
 import Base: iterate
 function iterate(ec::Enumerate{<:Chunk}, state=nothing)
