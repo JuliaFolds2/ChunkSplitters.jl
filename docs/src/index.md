@@ -4,6 +4,11 @@
 
 Working with chunks and their respective indices also improves thread-safety compared to a naive approach based on `threadid()` indexing (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
 
+!!! compat
+    In ChunkSplitters version 3.0 the iteration with `chunks` returns the ranges of indices only. The retrieve
+    the chunk indices, use `enumerate(chunks(...))`. Additionally, the number of chunks and the distribution type
+    of chunks are assigned with keyword arguments `n`, and `distribution`.  
+
 ## Installation
 
 Install with:
@@ -12,10 +17,6 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 ```
 
 ## The `chunks` iterator
-
-!!! compat
-    In ChunkSplitters version 3.0 the iteration with `chunks` returns the ranges of indices only. The retrieve
-    the chunk indices, use `enumerate(chunks(...))`. 
 
 The main interface is the `chunks` iterator, and the enumeration of chunks, with `enumerate`.
 
@@ -134,7 +135,7 @@ julia> sum(chunk_sums)
 
 The package also provides a lower-level `getchunk` function:
 ```julia-repl
-getchunk(array::AbstractArray, ichunk::Int, n::Int, distribution::Symbol=:batch)
+getchunk(array::AbstractArray, ichunk::Int, n::Int, distribution::Symbol)
 ```
 that returns the range of indices corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
 
@@ -163,13 +164,13 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3, distribution=:scatter)
+julia> getchunk(x, 1, 3, :scatter)
 1:3:7
 
-julia> getchunk(x, 2, 3, distribution=:scatter)
+julia> getchunk(x, 2, 3, :scatter)
 2:3:5
 
-julia> getchunk(x, 3, 3, distribution=:scatter)
+julia> getchunk(x, 3, 3, :scatter)
 3:3:6
 ```
 

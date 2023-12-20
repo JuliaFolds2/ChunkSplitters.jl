@@ -59,10 +59,10 @@ Using `n == Thread.nthreads() == 12`, we get the following timings:
 ```julia-repl
 julia> using BenchmarkTools 
 
-julia> @btime uneven_workload_threads($x, $work_load; n=nthreads(), chunk_distribution=:batch)
+julia> @btime uneven_workload_threads($x, $work_load; n=nthreads(), distribution=:batch)
   2.030 ms (71 allocations: 7.06 KiB)
 
-julia> @btime uneven_workload_threads($x, $work_load; n=nthreads(), chunk_distribution=:scatter)
+julia> @btime uneven_workload_threads($x, $work_load; n=nthreads(), distribution=:scatter)
   587.309 μs (70 allocations: 7.03 KiB)
 ```
 

@@ -189,13 +189,13 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3, distribution=:scatter)
+julia> getchunk(x, 1, 3, :scatter)
 1:3:7
 
-julia> getchunk(x, 2, 3, distribution=:scatter)
+julia> getchunk(x, 2, 3, :scatter)
 2:3:5
 
-julia> getchunk(x, 3, 3, distribution=:scatter)
+julia> getchunk(x, 3, 3, :scatter)
 3:3:6
 ```
 """
