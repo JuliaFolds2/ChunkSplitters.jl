@@ -223,13 +223,9 @@ end
 #
 module Testing
 using ..ChunkSplitters
-function test_chunks(; array_length, n, split, result, return_ranges=false)
+function test_chunks(; array_length, n, split, result)
     ranges = collect(getchunk(rand(Int, array_length), i, n, split) for i in 1:n)
-    if return_ranges
-        return ranges
-    else
-        all(ranges .== result)
-    end
+    all(ranges .== result)
 end
 function sum_parallel(x, n, split)
     s = fill(zero(eltype(x)), n)
