@@ -1,6 +1,8 @@
 [deps]
 ChunkSplitters = "ae650224-84b6-46f8-82ea-d812ca08434e"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 
 [compat]
 Documenter = "1"
