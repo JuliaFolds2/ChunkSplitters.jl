@@ -35,7 +35,7 @@ julia> collect(enumerate(chunks(x, 3)))
  (3, 6:1:7)
 ```
 
-This iterator works for OffsetArrays:
+Note that `chunks` also works just fine for `OffsetArray`s:
 
 ```jldoctest
 julia> using ChunkSplitters, OffsetArrays
