@@ -20,15 +20,15 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 The main interface is the `chunks` iterator, and the enumeration of chunks, with `enumerate`.
 
 ```julia
-chunks(array::AbstractArray, nchunks::Int, type::Symbol=:batch)
+chunks(array::AbstractArray; n::Int=Threads.nthreads(), distribution::Symbol=:batch)
 ```
-This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `type` parameter is optional. If `type == :batch`, the ranges are consecutive (default behavior). If `type == :scatter`, the range is scattered over the array.
+This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `distribution` parameter is optional. If `distribution == :batch`, the ranges are consecutive (default behavior). If `distribution == :scatter`, the range is scattered over the array.
 
 The different chunking variants are illustrated in the following figure: 
 
 ![splitter types](./assets/splitters.svg)
 
-For `type=:batch`, each chunk is "filled up" with work items one after another such that all chunks hold approximately the same number of work items (as far as possible). For `type=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
+For `distribution=:batch`, each chunk is "filled up" with work items one after another such that all chunks hold approximately the same number of work items (as far as possible). For `distribution=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
 
 ## Basic interface
 
@@ -39,14 +39,14 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> for inds in chunks(x, 3, :batch)
+julia> for inds in chunks(x; n=3, distribution=:batch)
            @show inds
        end
 inds = 1:1:3
 inds = 4:1:5
 inds = 6:1:7
 
-julia> for inds in chunks(x, 3, :scatter)
+julia> for inds in chunks(x; n=3, distribution=:scatter)
            @show inds
        end
 inds = 1:3:7
@@ -62,7 +62,7 @@ julia> using ChunkSplitters, Base.Threads
 
 julia> x = rand(7);
 
-julia> @threads for (ichunk, inds) in enumerate(chunks(x, 3))
+julia> @threads for (ichunk, inds) in enumerate(chunks(x; n=3))
            @show ichunk, inds
        end
 (ichunk, inds) = (1, 1:1:3)
@@ -79,8 +79,8 @@ julia> using BenchmarkTools
 
 julia> using ChunkSplitters
 
-julia> function sum_parallel(f, x; nchunks=Threads.nthreads())
-           t = map(chunks(x, nchunks)) do inds
+julia> function sum_parallel(f, x; n=Threads.nthreads())
+           t = map(chunks(x; n=n)) do inds
                Threads.@spawn sum(f, @view x[inds])
            end
            return sum(fetch.(t))
@@ -94,7 +94,7 @@ julia> Threads.nthreads()
 julia> @btime sum(x -> log(x)^7, $x);
   1.353 s (0 allocations: 0 bytes)
 
-julia> @btime sum_parallel(x -> log(x)^7, $x; nchunks=Threads.nthreads());
+julia> @btime sum_parallel(x -> log(x)^7, $x; n=Threads.nthreads());
   120.429 ms (98 allocations: 7.42 KiB)
 ```
 Of course, `chunks` can also be used in conjunction with `@threads` (see below).
@@ -104,7 +104,7 @@ Of course, `chunks` can also be used in conjunction with `@threads` (see below).
 If shared buffers are required, the enumeration of the buffers by
 chunk using `enumerate` is useful, to avoid using the id of the thread. For example,
 here we accumulate intermediate results of the sum in an array
-`chunk_sums` of length `nchunks`, which is later reduced:
+`chunk_sums` of length `n`, which is later reduced:
 
 A simple `@threads`-based example:
 ```jldoctest
@@ -112,11 +112,11 @@ julia> using ChunkSplitters, Base.Threads
 
 julia> x = collect(1:10^5);
 
-julia> nchunks = nthreads();
+julia> n = nthreads();
 
-julia> chunk_sums = zeros(Int, nchunks);
+julia> chunk_sums = zeros(Int, n);
 
-julia> @threads for (ichunk, inds) in enumerate(chunks(x, nchunks))
+julia> @threads for (ichunk, inds) in enumerate(chunks(x; n=n))
            chunk_sums[ichunk] += sum(@view x[inds])
        end
 
@@ -134,12 +134,12 @@ julia> sum(chunk_sums)
 
 The package also provides a lower-level `getchunk` function:
 ```julia-repl
-getchunk(array::AbstractArray, ichunk::Int, nchunks::Int, type::Symbol=:batch)
+getchunk(array::AbstractArray, ichunk::Int, n::Int, distribution::Symbol=:batch)
 ```
 that returns the range of indices corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
-into 3 chunks, we have (using the default `type = :batch` option):
+into 3 chunks, we have (using the default `distribution = :batch` option):
 
 ```jldoctest
 julia> using ChunkSplitters
@@ -156,20 +156,20 @@ julia> getchunk(x, 3, 3)
 6:1:7
 ```
 
-And using `type = :scatter`, we have:
+And using `distribution = :scatter`, we have:
 
 ```jldoctest
 julia> using ChunkSplitters 
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1, 3, :scatter)
+julia> getchunk(x, 1, 3, distribution=:scatter)
 1:3:7
 
-julia> getchunk(x, 2, 3, :scatter)
+julia> getchunk(x, 2, 3, distribution=:scatter)
 2:3:5
 
-julia> getchunk(x, 3, 3, :scatter)
+julia> getchunk(x, 3, 3, distribution=:scatter)
 3:3:6
 ```
 
@@ -180,10 +180,10 @@ julia> using BenchmarkTools
 
 julia> using ChunkSplitters
 
-julia> function sum_parallel_getchunk(f, x; nchunks=Threads.nthreads())
-           t = map(1:nchunks) do ichunk
+julia> function sum_parallel_getchunk(f, x; n=Threads.nthreads())
+           t = map(1:n) do ichunk
                Threads.@spawn begin
-                   local inds = getchunk(x, ichunk, nchunks)
+                   local inds = getchunk(x, ichunk, n)
                    sum(f, @view x[inds])
                end
            end
@@ -198,6 +198,6 @@ julia> Threads.nthreads()
 julia> @btime sum(x -> log(x)^7, $x);
   1.363 s (0 allocations: 0 bytes)
 
-julia> @btime sum_parallel_getchunk(x -> log(x)^7, $x; nchunks=Threads.nthreads());
+julia> @btime sum_parallel_getchunk(x -> log(x)^7, $x; n=Threads.nthreads());
   121.651 ms (100 allocations: 7.31 KiB)
 ```
