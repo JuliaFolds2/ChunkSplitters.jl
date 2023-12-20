@@ -125,9 +125,9 @@ julia> sum(chunk_sums)
 ```
 
 !!! warning
-    Using shared buffers can lead to performance issues caused by *false-sharing*, in which
-    multiple threads try to concurrently read data from nearby memory regions. The example
-    above intends to illustrate the syntax to be used to index the buffers, rather than
+    Using shared buffers like this can lead to performance issues caused by *false-sharing*:
+    A thread writes to the buffer, invalidates the cache-line for other threads, and thus causes expensive restoration of [cache coherence](https://en.wikipedia.org/wiki/Cache_coherence).
+    The example above intends to illustrate the syntax to be used to index the buffers, rather than
     to suggest this a an optimal pattern for parallelization. 
 
 ## Lower-level `getchunk` function 
