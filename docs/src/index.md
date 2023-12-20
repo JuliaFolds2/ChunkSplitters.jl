@@ -21,7 +21,7 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 The main interface is the `chunks` iterator, and the enumeration of chunks, with `enumerate`.
 
 ```julia
-chunks(array::AbstractArray; n::Int=Threads.nthreads(), distribution::Symbol=:batch)
+chunks(array::AbstractArray; n::Int, distribution::Symbol=:batch)
 ```
 This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `distribution` parameter is optional. If `distribution == :batch`, the ranges are consecutive (default behavior). If `distribution == :scatter`, the range is scattered over the array.
 

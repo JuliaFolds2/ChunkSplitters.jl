@@ -5,7 +5,7 @@ using TestItems
 export chunks, getchunk
 
 """
-    chunks(array::AbstractArray; n::Int=Threads.nthreads(), distribution::Symbol=:batch)
+    chunks(array::AbstractArray; n::Int, distribution::Symbol=:batch)
 
 Returns an iterator that splits the *indices* of `array` into `n`-many chunks.
 The iterator can be used to process chunks of `array` one after another or in parallel (e.g. with `@threads`).
@@ -63,7 +63,7 @@ struct Chunk{T<:AbstractArray}
 end
 
 # Constructor for the chunks
-function chunks(x::AbstractArray; n::Int=Threads.nthreads(), distribution::Symbol=:batch)
+function chunks(x::AbstractArray; n::Int, distribution::Symbol=:batch)
     n >= 1 || throw(ArgumentError("n must be >= 1"))
     (distribution in distribution_types) || throw(ArgumentError("distribution must be one of $distribution"))
     Chunk{typeof(x)}(x, min(length(x), n), distribution)
