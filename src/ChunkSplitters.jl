@@ -124,7 +124,7 @@ getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i; n=ec.itr.n,
 length(ec::Enumerate{<:Chunk}) = ec.itr.n
 
 @testitem "enumerate chunks" begin
-    using ChunkSplitters
+    using ChunkSplitters: chunks
     using Base.Threads: @spawn, @threads, nthreads
     x = rand(100)
     s = zeros(nthreads())
@@ -221,7 +221,7 @@ end
 # Module for testing
 #
 module Testing
-using ..ChunkSplitters
+using ..ChunkSplitters: chunks, getchunk
 function test_chunks(; array_length, n, split, result)
     ranges = collect(getchunk(rand(Int, array_length), i; n=n, split=split) for i in 1:n)
     all(ranges .== result)
@@ -250,9 +250,9 @@ end # module Testing
 end
 
 @testitem ":scatter" begin
-    import ChunkSplitters: chunks
-    import OffsetArrays: OffsetArray
-    import ChunkSplitters.Testing: test_chunks, test_sum
+    using ChunkSplitters: chunks
+    using OffsetArrays: OffsetArray
+    using ChunkSplitters.Testing: test_chunks, test_sum
     @test test_chunks(; array_length=1, n=1, split=:scatter, result=[1:1])
     @test test_chunks(; array_length=2, n=1, split=:scatter, result=[1:2])
     @test test_chunks(; array_length=2, n=2, split=:scatter, result=[1:1, 2:2])
@@ -273,9 +273,9 @@ end
 end
 
 @testitem ":batch" begin
-    import ChunkSplitters: chunks
-    import OffsetArrays: OffsetArray
-    import ChunkSplitters.Testing: test_chunks, test_sum
+    using ChunkSplitters: chunks
+    using OffsetArrays: OffsetArray
+    using ChunkSplitters.Testing: test_chunks, test_sum
     @test test_chunks(; array_length=1, n=1, split=:batch, result=[1:1])
     @test test_chunks(; array_length=2, n=1, split=:batch, result=[1:2])
     @test test_chunks(; array_length=2, n=2, split=:batch, result=[1:1, 2:2])
@@ -296,7 +296,7 @@ end
 end
 
 @testitem "indexing" begin
-    import ChunkSplitters: chunks
+    using ChunkSplitters: chunks
     c = chunks(1:5; n=4)
     @test firstindex(c) == 1
     @test firstindex(enumerate(c)) == 1
@@ -317,7 +317,7 @@ end
 end
 
 @testitem "chunk sizes" begin
-    import ChunkSplitters: chunks
+    using ChunkSplitters: chunks
     # Sanity test for n < array_length
     c = chunks(1:10; n=2)
     @test length(c) == 2
@@ -330,7 +330,7 @@ end
 end
 
 @testitem "return type" begin
-    import ChunkSplitters: chunks, getchunk
+    using ChunkSplitters: chunks, getchunk
     @test typeof(getchunk(1:10, 1; n=2, split=:batch)) == StepRange{Int,Int}
     @test typeof(getchunk(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
     function mwe(ichunk=2, n=5, l=10)
