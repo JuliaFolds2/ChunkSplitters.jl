@@ -67,7 +67,7 @@ end
 # Constructor for the chunks
 function chunks(x::AbstractArray; n::Int, split::Symbol=:batch)
     n >= 1 || throw(ArgumentError("n must be >= 1"))
-    (split in split_types) || throw(ArgumentError("split must be one of $split"))
+    (split in split_types) || throw(ArgumentError("split must be one of $split_types"))
     Chunk{typeof(x)}(x, min(length(x), n), split)
 end
 
