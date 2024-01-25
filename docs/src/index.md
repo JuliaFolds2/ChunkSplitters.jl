@@ -61,7 +61,7 @@ inds = 3:3:6
 The chunk indices can be retrieved with the `enumerate` function, which is specialized
 for the ChunkSplitters structure such that it works with `@threads`: 
 
-```jldoctest
+```julia-repl
 julia> using ChunkSplitters, Base.Threads
 
 julia> x = rand(7);
