@@ -7,3 +7,8 @@ using TestItems: @testitem
     import Aqua
     Aqua.test_all(ChunkSplitters)
 end
+
+@testitem "Doctests" begin
+    using Documenter: doctest
+    doctest(ChunkSplitters)
+end
