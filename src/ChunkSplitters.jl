@@ -347,4 +347,7 @@ end
     @test eltype(chunks(x; n=5)) == StepRange{Int,Int}
 end
 
+# Preserve legacy 2.0 interface (will be deprecated in 3.0)
+include("./legacy.jl")
+
 end # module ChunkSplitters
