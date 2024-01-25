@@ -5,9 +5,12 @@
 Working with chunks and their respective indices also improves thread-safety compared to a naive approach based on `threadid()` indexing (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
 
 !!! compat
-    In ChunkSplitters version 3.0 the iteration with `chunks` returns the ranges of indices only. The retrieve
+    In ChunkSplitters version 2.1 the iteration with `chunks` returns the ranges of indices only. To retrieve
     the chunk indices, use `enumerate(chunks(...))`. Additionally, the number of chunks and the split type
     of chunks are assigned with keyword arguments `n`, and `split`.  
+
+    This change is not breaking because the legacy interface (of version 2.0) is still valid, although it
+    is no longer documented and will be deprecated in version 3.0.
 
 ## Installation
 
@@ -58,7 +61,7 @@ inds = 3:3:6
 The chunk indices can be retrieved with the `enumerate` function, which is specialized
 for the ChunkSplitters structure such that it works with `@threads`: 
 
-```julia-repl
+```jldoctest
 julia> using ChunkSplitters, Base.Threads
 
 julia> x = rand(7);
