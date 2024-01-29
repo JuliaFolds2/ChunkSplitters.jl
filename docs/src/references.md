@@ -15,8 +15,11 @@ Pages   = ["ChunkSplitters.jl"]
 
 ## Interface requirements 
 
+!!! compat
+    Support for this minimal interface requires version 2.2.0.
+
 For the `chunks` and `getchunk` functions to work, the input value must
-have implemented only three methods extended from `Base`: `firstindex`,
+have implemented only three methods extended from Julia `Base`: `firstindex`,
 `lastindex`, and `length`.
 
 For example:
