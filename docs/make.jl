@@ -13,7 +13,7 @@ makedocs(
     ]
 )
 deploydocs(
-    repo = "github.com/m3g/ChunkSplitters.jl.git",
+    repo = "github.com/JuliaFolds2/ChunkSplitters.jl.git",
     target = "build",
     branch = "gh-pages",
     devbranch = "main",
