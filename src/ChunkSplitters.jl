@@ -7,7 +7,7 @@ import Base: firstindex, lastindex, getindex
 export chunks, getchunk
 
 """
-    chunks(array::AbstractArray; n::Int, split::Symbol=:batch)
+    chunks(array; n::Int, split::Symbol=:batch)
 
 Returns an iterator that splits the *indices* of `array` into `n`-many chunks.
 The iterator can be used to process chunks of `array` one after another or in parallel (e.g. with `@threads`).
@@ -16,6 +16,9 @@ The optional argument `split` can be `:batch` (default) or `:scatter`.
 If you need a running chunk index, e.g. to index into a buffer that is shared 
 between chunks, you can combine `chunks` with `enumerate`. In particular,
 `enumerate(chunks(...))` can be used in conjuction with `@threads`.
+
+The `array` is usually some iterable object. The interface requires it to have
+`firstindex`, `lastindex`, and `length` functions defined only.
 
 ## Examples
 
@@ -58,17 +61,17 @@ function chunks end
 const split_types = (:batch, :scatter)
 
 # Structure that carries the chunks data
-struct Chunk{T<:AbstractArray}
-    x::T
+struct Chunk{T}
+    array::T
     n::Int
     split::Symbol
 end
 
 # Constructor for the chunks
-function chunks(x::AbstractArray; n::Int, split::Symbol=:batch)
+function chunks(array; n::Int, split::Symbol=:batch)
     n >= 1 || throw(ArgumentError("n must be >= 1"))
     (split in split_types) || throw(ArgumentError("split must be one of $split_types"))
-    Chunk{typeof(x)}(x, min(length(x), n), split)
+    Chunk{typeof(array)}(array, min(length(array), n), split)
 end
 
 length(c::Chunk) = c.n
@@ -76,17 +79,17 @@ eltype(::Chunk) = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.n
-getindex(c::Chunk, i::Int) = getchunk(c.x, i; n = c.n, split = c.split)
+getindex(c::Chunk, i::Int) = getchunk(c.array, i; n = c.n, split = c.split)
 
 #
 # Iteration of the chunks
 #
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        chunk = getchunk(c.x, 1; n = c.n, split = c.split)
+        chunk = getchunk(c.array, 1; n = c.n, split = c.split)
         return (chunk, 1)
     elseif state < c.n
-        chunk = getchunk(c.x, state + 1; n=c.n, split=c.split)
+        chunk = getchunk(c.array, state + 1; n=c.n, split=c.split)
         return (chunk, state + 1)
     end
     return nothing
@@ -106,11 +109,11 @@ Base.enumerate(c::Chunk) = Enumerate(c)
 
 function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
-        chunk = getchunk(ec.itr.x, 1; n=ec.itr.n, split=ec.itr.split)
+        chunk = getchunk(ec.itr.array, 1; n=ec.itr.n, split=ec.itr.split)
         return ((1, chunk), 1)
     elseif state < ec.itr.n
         state = state + 1
-        chunk = getchunk(ec.itr.x, state; n=ec.itr.n, split=ec.itr.split)
+        chunk = getchunk(ec.itr.array, state; n=ec.itr.n, split=ec.itr.split)
         return ((state, chunk), state)
     end
     return nothing
@@ -120,7 +123,7 @@ eltype(::Enumerate{<:Chunk}) = Tuple{Int,StepRange{Int,Int}}
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
 lastindex(ec::Enumerate{<:Chunk}) = ec.itr.n
-getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.x, i; n=ec.itr.n, split=ec.itr.split))
+getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.array, i; n=ec.itr.n, split=ec.itr.split))
 length(ec::Enumerate{<:Chunk}) = ec.itr.n
 
 @testitem "enumerate chunks" begin
@@ -153,13 +156,16 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    getchunk(array::AbstractArray, i::Int; n::Int, split::Symbol=:batch)
+    getchunk(array, i::Int; n::Int, split::Symbol=:batch)
 
 Function that returns a range of indices of `array`, given the number of chunks in
 which the array is to be split, `n`, and the current chunk number `i`. 
 
 If `split == :batch`, the ranges are consecutive. If `split == :scatter`, the range
 is scattered over the array. 
+
+The `array` is usually some iterable object. The interface requires it to have
+`firstindex`, `lastindex`, and `length` functions defined only.
 
 ## Example
 
@@ -198,7 +204,7 @@ julia> getchunk(x, 3; n=3, split=:scatter)
 3:3:6
 ```
 """
-function getchunk(array::AbstractArray, ichunk::Int; n::Int, split::Symbol=:batch)
+function getchunk(array, ichunk::Int; n::Int, split::Symbol=:batch)
     ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks"))
     ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
     if split == :batch
@@ -246,7 +252,6 @@ end # module Testing
     @test_throws ArgumentError chunks(1:10; n=2, split=:not_batch)
     @test_throws ArgumentError chunks(1:10; n=0)
     @test_throws ArgumentError chunks(1:10; n=-1)
-    @test_throws MethodError chunks(1; n=1)
 end
 
 @testitem ":scatter" begin
@@ -270,6 +275,8 @@ end
     @test test_sum(; array_length=117, n=4, split=:scatter)
     x = OffsetArray(1:7, -1:5)
     @test collect.(chunks(x; n=3, split=:scatter)) == [[-1, 2, 5], [0, 3], [1, 4]]
+
+
 end
 
 @testitem ":batch" begin
@@ -345,6 +352,22 @@ end
     x = rand(10)
     @test typeof(first(chunks(x; n=5))) == StepRange{Int,Int}
     @test eltype(chunks(x; n=5)) == StepRange{Int,Int}
+end
+
+@testitem "Minimial interface" begin
+    using ChunkSplitters: chunks
+    struct MinimalInterface end
+    Base.firstindex(::MinimalInterface) = 1
+    Base.lastindex(::MinimalInterface) = 7 
+    Base.length(::MinimalInterface) = 7
+    x = MinimalInterface()
+    @test collect(chunks(x; n=3)) == [1:1:3, 4:1:5, 6:1:7]
+    @test collect(enumerate(chunks(x; n=3))) == [(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)]
+    @test eltype(enumerate(chunks(x; n=3))) == Tuple{Int64,StepRange{Int64,Int64}}
+    @test typeof(first(chunks(x; n=3))) == StepRange{Int,Int}
+    @test collect(chunks(x; n=3, split=:scatter)) == [1:3:7, 2:3:5, 3:3:6]
+    @test collect(enumerate(chunks(x; n=3, split=:scatter))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
+    @test eltype(enumerate(chunks(x; n=3, split=:scatter))) == Tuple{Int64,StepRange{Int64,Int64}}
 end
 
 # Preserve legacy 2.0 interface (will be deprecated in 3.0)
