@@ -7,18 +7,19 @@ import Base: firstindex, lastindex, getindex
 export chunks, getchunk
 
 """
-    chunks(array; n::Int, split::Symbol=:batch)
+    chunks(itr; n::Int, split::Symbol=:batch)
 
-Returns an iterator that splits the *indices* of `array` into `n`-many chunks.
-The iterator can be used to process chunks of `array` one after another or in parallel (e.g. with `@threads`).
+Returns an iterator that splits the *indices* of `itr` into `n`-many chunks.
+The iterator can be used to process chunks of `itr` one after another or in parallel (e.g. with `@threads`).
 The optional argument `split` can be `:batch` (default) or `:scatter`.
 
 If you need a running chunk index, e.g. to index into a buffer that is shared 
 between chunks, you can combine `chunks` with `enumerate`. In particular,
 `enumerate(chunks(...))` can be used in conjuction with `@threads`.
 
-The `array` is usually some iterable object. The interface requires it to have
-`firstindex`, `lastindex`, and `length` functions defined only.
+The `itr` is usually some iterable, indexable object. The interface requires it to have
+`firstindex`, `lastindex`, and `length` functions defined, as well as defining
+`ChunkSplitters.is_chunkable(::typeof(itr)) = true`.
 
 ## Examples
 
@@ -57,39 +58,57 @@ julia> collect(chunks(x; n=3))
 """
 function chunks end
 
+"""
+    is_chunkable(::T) :: Bool
+
+Determines if a of object of type `T` is capable of being `chunk`ed. Overload this function for your custom
+types if that type is linearly indexable and supports `firstindex`, `lastindex`, and `length`.
+"""
+is_chunkable(::Any) = false
+is_chunkable(::AbstractArray) = true
+is_chunkable(::Tuple)         = true
+
+
 # Current chunks split types
 const split_types = (:batch, :scatter)
 
 # Structure that carries the chunks data
 struct Chunk{T}
-    array::T
+    itr::T
     n::Int
     split::Symbol
 end
+is_chunkable(::Chunk) = true
 
 # Constructor for the chunks
-function chunks(array; n::Int, split::Symbol=:batch)
+function chunks(data; n::Int, split::Symbol=:batch)
     n >= 1 || throw(ArgumentError("n must be >= 1"))
-    (split in split_types) || throw(ArgumentError("split must be one of $split_types"))
-    Chunk{typeof(array)}(array, min(length(array), n), split)
+    is_chunkable(data) || not_chunkable_err(data)
+    (split in split_types) || split_err()
+    Chunk{typeof(data)}(data, min(length(data), n), split)
 end
+function not_chunkable_err(::T) where {T}
+    throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or if it is compatible with the chunks minimal interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
+end
+@noinline split_err() =
+    throw(ArgumentError("split must be one of $split_types"))
 
 length(c::Chunk) = c.n
 eltype(::Chunk) = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.n
-getindex(c::Chunk, i::Int) = getchunk(c.array, i; n = c.n, split = c.split)
+getindex(c::Chunk, i::Int) = getchunk(c.itr, i; n = c.n, split = c.split)
 
 #
 # Iteration of the chunks
 #
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        chunk = getchunk(c.array, 1; n = c.n, split = c.split)
+        chunk = getchunk(c.itr, 1; n = c.n, split = c.split)
         return (chunk, 1)
     elseif state < c.n
-        chunk = getchunk(c.array, state + 1; n=c.n, split=c.split)
+        chunk = getchunk(c.itr, state + 1; n=c.n, split=c.split)
         return (chunk, state + 1)
     end
     return nothing
@@ -109,11 +128,11 @@ Base.enumerate(c::Chunk) = Enumerate(c)
 
 function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
-        chunk = getchunk(ec.itr.array, 1; n=ec.itr.n, split=ec.itr.split)
+        chunk = getchunk(ec.itr.itr, 1; n=ec.itr.n, split=ec.itr.split)
         return ((1, chunk), 1)
     elseif state < ec.itr.n
         state = state + 1
-        chunk = getchunk(ec.itr.array, state; n=ec.itr.n, split=ec.itr.split)
+        chunk = getchunk(ec.itr.itr, state; n=ec.itr.n, split=ec.itr.split)
         return ((state, chunk), state)
     end
     return nothing
@@ -123,7 +142,7 @@ eltype(::Enumerate{<:Chunk}) = Tuple{Int,StepRange{Int,Int}}
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
 lastindex(ec::Enumerate{<:Chunk}) = ec.itr.n
-getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.array, i; n=ec.itr.n, split=ec.itr.split))
+getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.itr, i; n=ec.itr.n, split=ec.itr.split))
 length(ec::Enumerate{<:Chunk}) = ec.itr.n
 
 @testitem "enumerate chunks" begin
@@ -156,16 +175,17 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    getchunk(array, i::Int; n::Int, split::Symbol=:batch)
+    getchunk(itr, i::Int; n::Int, split::Symbol=:batch)
 
-Function that returns a range of indices of `array`, given the number of chunks in
-which the array is to be split, `n`, and the current chunk number `i`. 
+Function that returns a range of indices of `itr`, given the number of chunks in
+which the itr is to be split, `n`, and the current chunk number `i`. 
 
 If `split == :batch`, the ranges are consecutive. If `split == :scatter`, the range
-is scattered over the array. 
+is scattered over the itr. 
 
-The `array` is usually some iterable object. The interface requires it to have
-`firstindex`, `lastindex`, and `length` functions defined only.
+The `itr` is usually some iterable, indexable object. The interface requires it to have
+`firstindex`, `lastindex`, and `length` functions defined, as well as defining
+`ChunkSplitters.is_chunkable(::typeof(itr)) = true`.
 
 ## Example
 
@@ -204,18 +224,19 @@ julia> getchunk(x, 3; n=3, split=:scatter)
 3:3:6
 ```
 """
-function getchunk(array, ichunk::Int; n::Int, split::Symbol=:batch)
+function getchunk(itr, ichunk::Int; n::Int, split::Symbol=:batch)
     ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks"))
-    ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
+    ichunk <= length(itr) || throw(ArgumentError("ichunk must be less or equal to the length of `itr`"))
+    is_chunkable(itr) || not_chunkable_err(itr)
     if split == :batch
-        l = length(array)
+        l = length(itr)
         n_per_chunk, n_remaining = divrem(l, n)
-        first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
+        first = firstindex(itr) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
         last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
         step = 1
     elseif split == :scatter
-        first = (firstindex(array) - 1) + ichunk
-        last = lastindex(array)
+        first = (firstindex(itr) - 1) + ichunk
+        last = lastindex(itr)
         step = n
     else
         throw(ArgumentError("chunk split must be :batch or :scatter"))
@@ -355,11 +376,12 @@ end
 end
 
 @testitem "Minimial interface" begin
-    using ChunkSplitters: chunks
+    using ChunkSplitters: ChunkSplitters, chunks
     struct MinimalInterface end
     Base.firstindex(::MinimalInterface) = 1
     Base.lastindex(::MinimalInterface) = 7 
     Base.length(::MinimalInterface) = 7
+    ChunkSplitters.is_chunkable(::MinimalInterface) = true
     x = MinimalInterface()
     @test collect(chunks(x; n=3)) == [1:1:3, 4:1:5, 6:1:7]
     @test collect(enumerate(chunks(x; n=3))) == [(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)]
