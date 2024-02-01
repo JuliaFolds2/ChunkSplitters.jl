@@ -74,7 +74,7 @@ const split_types = (:batch, :scatter)
 
 # Structure that carries the chunks data
 struct Chunk{T}
-    array::T
+    itr::T
     n::Int
     split::Symbol
 end
@@ -98,17 +98,17 @@ eltype(::Chunk) = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.n
-getindex(c::Chunk, i::Int) = getchunk(c.array, i; n = c.n, split = c.split)
+getindex(c::Chunk, i::Int) = getchunk(c.itr, i; n = c.n, split = c.split)
 
 #
 # Iteration of the chunks
 #
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        chunk = getchunk(c.array, 1; n = c.n, split = c.split)
+        chunk = getchunk(c.itr, 1; n = c.n, split = c.split)
         return (chunk, 1)
     elseif state < c.n
-        chunk = getchunk(c.array, state + 1; n=c.n, split=c.split)
+        chunk = getchunk(c.itr, state + 1; n=c.n, split=c.split)
         return (chunk, state + 1)
     end
     return nothing
@@ -128,11 +128,11 @@ Base.enumerate(c::Chunk) = Enumerate(c)
 
 function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     if isnothing(state)
-        chunk = getchunk(ec.itr.array, 1; n=ec.itr.n, split=ec.itr.split)
+        chunk = getchunk(ec.itr.itr, 1; n=ec.itr.n, split=ec.itr.split)
         return ((1, chunk), 1)
     elseif state < ec.itr.n
         state = state + 1
-        chunk = getchunk(ec.itr.array, state; n=ec.itr.n, split=ec.itr.split)
+        chunk = getchunk(ec.itr.itr, state; n=ec.itr.n, split=ec.itr.split)
         return ((state, chunk), state)
     end
     return nothing
@@ -142,7 +142,7 @@ eltype(::Enumerate{<:Chunk}) = Tuple{Int,StepRange{Int,Int}}
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
 lastindex(ec::Enumerate{<:Chunk}) = ec.itr.n
-getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.array, i; n=ec.itr.n, split=ec.itr.split))
+getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr.itr, i; n=ec.itr.n, split=ec.itr.split))
 length(ec::Enumerate{<:Chunk}) = ec.itr.n
 
 @testitem "enumerate chunks" begin
@@ -175,16 +175,17 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    getchunk(array, i::Int; n::Int, split::Symbol=:batch)
+    getchunk(itr, i::Int; n::Int, split::Symbol=:batch)
 
-Function that returns a range of indices of `array`, given the number of chunks in
-which the array is to be split, `n`, and the current chunk number `i`. 
+Function that returns a range of indices of `itr`, given the number of chunks in
+which the itr is to be split, `n`, and the current chunk number `i`. 
 
 If `split == :batch`, the ranges are consecutive. If `split == :scatter`, the range
-is scattered over the array. 
+is scattered over the itr. 
 
-The `array` is usually some iterable object. The interface requires it to have
-`firstindex`, `lastindex`, and `length` functions defined only.
+The `itr` is usually some iterable, indexable object. The interface requires it to have
+`firstindex`, `lastindex`, and `length` functions defined, as well as defining
+`ChunkSplitters.is_chunkable(::typeof(itr)) = true`.
 
 ## Example
 
@@ -223,19 +224,19 @@ julia> getchunk(x, 3; n=3, split=:scatter)
 3:3:6
 ```
 """
-function getchunk(array, ichunk::Int; n::Int, split::Symbol=:batch)
+function getchunk(itr, ichunk::Int; n::Int, split::Symbol=:batch)
     ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks"))
-    ichunk <= length(array) || throw(ArgumentError("ichunk must be less or equal to the length of `array`"))
-    is_chunkable(array) || not_chunkable_err(array)
+    ichunk <= length(itr) || throw(ArgumentError("ichunk must be less or equal to the length of `itr`"))
+    is_chunkable(itr) || not_chunkable_err(itr)
     if split == :batch
-        l = length(array)
+        l = length(itr)
         n_per_chunk, n_remaining = divrem(l, n)
-        first = firstindex(array) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
+        first = firstindex(itr) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
         last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
         step = 1
     elseif split == :scatter
-        first = (firstindex(array) - 1) + ichunk
-        last = lastindex(array)
+        first = (firstindex(itr) - 1) + ichunk
+        last = lastindex(itr)
         step = n
     else
         throw(ArgumentError("chunk split must be :batch or :scatter"))
