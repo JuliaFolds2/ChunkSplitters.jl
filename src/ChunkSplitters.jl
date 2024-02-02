@@ -1,10 +1,12 @@
 module ChunkSplitters
 
+using Compat: @compat
 using TestItems: @testitem
 import Base: iterate, length, eltype
 import Base: firstindex, lastindex, getindex
 
 export chunks, getchunk
+@compat public is_chunkable
 
 """
     chunks(itr; n::Int, split::Symbol=:batch)

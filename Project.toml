@@ -4,10 +4,12 @@ authors = ["Leandro Martinez <lmartine@unicamp.br> and contributors"]
 version = "2.2.1-DEV"
 
 [deps]
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 Aqua = "0.8"
+Compat = "4.12"
 Documenter = "1"
 OffsetArrays = "1"
 Test = "1.6"
