@@ -68,7 +68,7 @@ types if that type is linearly indexable and supports `firstindex`, `lastindex`,
 """
 is_chunkable(::Any) = false
 is_chunkable(::AbstractArray) = true
-is_chunkable(::Tuple)         = true
+is_chunkable(::Tuple) = true
 
 
 # Current chunks split types
@@ -100,14 +100,14 @@ eltype(::Chunk) = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = c.n
-getindex(c::Chunk, i::Int) = getchunk(c.itr, i; n = c.n, split = c.split)
+getindex(c::Chunk, i::Int) = getchunk(c.itr, i; n=c.n, split=c.split)
 
 #
 # Iteration of the chunks
 #
 function iterate(c::Chunk, state=nothing)
     if isnothing(state)
-        chunk = getchunk(c.itr, 1; n = c.n, split = c.split)
+        chunk = getchunk(c.itr, 1; n=c.n, split=c.split)
         return (chunk, 1)
     elseif state < c.n
         chunk = getchunk(c.itr, state + 1; n=c.n, split=c.split)
@@ -381,7 +381,7 @@ end
     using ChunkSplitters: ChunkSplitters, chunks
     struct MinimalInterface end
     Base.firstindex(::MinimalInterface) = 1
-    Base.lastindex(::MinimalInterface) = 7 
+    Base.lastindex(::MinimalInterface) = 7
     Base.length(::MinimalInterface) = 7
     ChunkSplitters.is_chunkable(::MinimalInterface) = true
     x = MinimalInterface()
