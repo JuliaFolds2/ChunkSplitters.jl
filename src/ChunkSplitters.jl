@@ -508,8 +508,8 @@ end
     c = chunks(1:10; size=5)
     @test length(c) == 2
     for (l, s) in [(13, 10), (5, 2), (42, 7), (22, 15)]
-        c = chunks(1:l; size=s)
-        @test allequal(length.(c)[1:end-1]) # only the last chunk may have different length
+        local c = chunks(1:l; size=s)
+        @test all(length(c[i]) == length(c[i+1]) for i in 1:length(c)-2) # only the last chunk may have different length
     end
 end
 
