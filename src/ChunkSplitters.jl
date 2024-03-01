@@ -9,18 +9,23 @@ export chunks, getchunk
 @compat public is_chunkable
 
 """
-    chunks(itr; n::Integer, size::Integer, split::Symbol=:batch)
+    chunks(itr; n::Integer, size::Integer[, split::Symbol=:batch])
 
-Returns an iterator that splits the *indices* of `itr` into `n`-many chunks.
-The iterator can be used to process chunks of `itr` one after another or in parallel (e.g. with `@threads`).
-The optional argument `split` can be `:batch` (default) or `:scatter`.
+Returns an iterator that splits the *indices* of `itr` into
+`n`-many chunks (if `n` is given) or into chunks of a certain size (if `size` is given).
+The keyword arguments `n` and `size` are mutually exclusive.
+The returned iterator can be used to process chunks of `itr` one after another or
+in parallel (e.g. with `@threads`).
 
-If you need a running chunk index, e.g. to index into a buffer that is shared
-between chunks, you can combine `chunks` with `enumerate`. In particular,
+The optional argument `split` can be `:batch` (default) or `:scatter` and determines the
+distribution of the indices among the chunks. If `split == :batch`, chunk indices will be
+consecutive. If `split == :scatter`, the range is scattered over `itr`.
+
+If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
 `enumerate(chunks(...))` can be used in conjuction with `@threads`.
 
 The `itr` is usually some iterable, indexable object. The interface requires it to have
-`firstindex`, `lastindex`, and `length` functions defined, as well as defining
+`firstindex`, `lastindex`, and `length` functions defined, as well as
 `ChunkSplitters.is_chunkable(::typeof(itr)) = true`.
 
 ## Examples
@@ -41,6 +46,12 @@ julia> collect(enumerate(chunks(x; n=3)))
  (1, 1:1:3)
  (2, 4:1:5)
  (3, 6:1:7)
+
+julia> collect(chunks(1:7; size=3))
+3-element Vector{StepRange{Int64, Int64}}:
+ 1:1:3
+ 4:1:6
+ 7:1:7
 ```
 
 Note that `chunks` also works just fine for `OffsetArray`s:
@@ -199,21 +210,14 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    getchunk(itr, i::Int; n::Int, split::Symbol=:batch)
+    getchunk(itr, i::Integer; n::Integer, size::Integer[, split::Symbol=:batch])
 
-Function that returns a range of indices of `itr`, given the number of chunks in
-which the itr is to be split, `n`, and the current chunk number `i`.
-
-If `split == :batch`, the ranges are consecutive. If `split == :scatter`, the range
-is scattered over the itr.
-
-The `itr` is usually some iterable, indexable object. The interface requires it to have
-`firstindex`, `lastindex`, and `length` functions defined, as well as defining
-`ChunkSplitters.is_chunkable(::typeof(itr)) = true`.
+Returns the range of indices of `itr` that corresponds to the `i`-th chunk.
+How the chunks are formed depends on the keyword arguments. See `chunks` for more information.
 
 ## Example
 
-For example, if we have an array of 7 elements, and the work on the elements is divided
+If we have an array of 7 elements, and the work on the elements is divided
 into 3 chunks, we have (using the default `split = :batch` option):
 
 ```jldoctest
@@ -247,6 +251,25 @@ julia> getchunk(x, 2; n=3, split=:scatter)
 julia> getchunk(x, 3; n=3, split=:scatter)
 3:3:6
 ```
+
+We can also choose the chunk size rather than the number of chunks:
+
+```jldoctest
+julia> using ChunkSplitters
+
+julia> x = rand(7);
+
+julia> getchunk(x, 1; size=3)
+1:1:3
+
+julia> getchunk(x, 2; size=3)
+4:1:6
+
+julia> getchunk(x, 3; size=3)
+7:1:7
+```
+
+
 """
 function getchunk(itr, ichunk::Integer; n::Integer=0, size::Integer=0, split::Symbol=:batch)
     n != 0 || size != 0 || missing_input_err()
