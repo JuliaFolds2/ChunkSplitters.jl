@@ -109,11 +109,10 @@ function chunks(data; n::Integer=0, size::Integer=0, split::Symbol=:batch)
     else
         C = FixedSize
         size >= 1 || throw(ArgumentError("size must be >= 1"))
-        size <= length(data) || throw(ArgumentError("size must be <= length(data)"))
     end
     is_chunkable(data) || not_chunkable_err(data)
     (split in split_types) || split_err()
-    Chunk{typeof(data),C}(data, min(length(data), n), size, split)
+    Chunk{typeof(data),C}(data, min(length(data), n), min(length(data), size), split)
 end
 function missing_input_err()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
@@ -281,7 +280,7 @@ function getchunk(itr, ichunk::Integer; n::Integer=0, size::Integer=0, split::Sy
         C = FixedSize
         size >= 1 || throw(ArgumentError("size must be >= 1"))
         l = length(itr)
-        size <= l || throw(ArgumentError("size must be <= length(itr)"))
+        size = min(l, size) # handle size>length(itr)
         n = cld(l, size)
     end
     ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
@@ -507,6 +506,10 @@ end
     # FixedSize
     c = chunks(1:10; size=5)
     @test length(c) == 2
+    # When size > array_length, we shouldn't create more than one chunk
+    c = chunks(1:10; size=20)
+    @test length(c) == 1
+    @test length(first(c)) == 10
     for (l, s) in [(13, 10), (5, 2), (42, 7), (22, 15)]
         local c = chunks(1:l; size=s)
         @test all(length(c[i]) == length(c[i+1]) for i in 1:length(c)-2) # only the last chunk may have different length
