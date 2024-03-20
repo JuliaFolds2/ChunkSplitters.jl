@@ -127,7 +127,7 @@ end
     throw(ArgumentError("split must be one of $split_types"))
 
 length(c::Chunk{T,FixedCount}) where {T} = c.n
-length(c::Chunk{T,FixedSize}) where {T} = cld(length(c.itr), c.size)
+length(c::Chunk{T,FixedSize}) where {T} = cld(length(c.itr), max(1, c.size))
 eltype(::Chunk) = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
@@ -138,6 +138,7 @@ getindex(c::Chunk, i::Int) = getchunk(c, i)
 # Iteration of the chunks
 #
 function iterate(c::Chunk, state=nothing)
+    length(c.itr) == 0 && return nothing
     if isnothing(state)
         chunk = getchunk(c, 1)
         return (chunk, 1)
@@ -161,6 +162,7 @@ end
 Base.enumerate(c::Chunk) = Enumerate(c)
 
 function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
+    length(ec.itr.itr) == 0 && return nothing
     if isnothing(state)
         chunk = getchunk(ec.itr, 1)
         return ((1, chunk), 1)
@@ -271,6 +273,7 @@ julia> getchunk(x, 3; size=3)
 
 """
 function getchunk(itr, ichunk::Integer; n::Integer=0, size::Integer=0, split::Symbol=:batch)
+    length(itr) == 0 && return nothing
     n != 0 || size != 0 || missing_input_err()
     n != 0 && size != 0 && mutually_exclusive_err()
     if n != 0
@@ -543,6 +546,13 @@ end
     @test eltype(chunks(x; n=5)) == StepRange{Int,Int}
     @test typeof(first(chunks(x; size=2))) == StepRange{Int,Int}
     @test eltype(chunks(x; n=2)) == StepRange{Int,Int}
+    # Empty iterator
+    @test getchunk(10:9, 1; n=2) === nothing
+    @test getchunk(10:9, 1; size=2) === nothing
+    @test collect(chunks(10:9; n=2)) == Vector{StepRange{Int,Int}}()
+    @test collect(chunks(10:9; size=2)) == Vector{StepRange{Int,Int}}()
+    @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
+    @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
 end
 
 @testitem "Minimial interface" begin
