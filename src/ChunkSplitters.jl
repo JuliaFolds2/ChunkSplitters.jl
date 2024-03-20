@@ -127,7 +127,7 @@ end
     throw(ArgumentError("split must be one of $split_types"))
 
 length(c::Chunk{T,FixedCount}) where {T} = c.n
-length(c::Chunk{T,FixedSize}) where {T} = length(c.itr) == 0 ? 0 : cld(length(c.itr), c.size)
+length(c::Chunk{T,FixedSize}) where {T} = cld(length(c.itr), max(1, c.size))
 eltype(::Chunk) = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
@@ -549,10 +549,10 @@ end
     # Empty iterator
     @test getchunk(10:9, 1; n=2) === nothing
     @test getchunk(10:9, 1; size=2) === nothing
-    @test collect(chunks(10:9; n=2)) == Vector{StepRange{Int, Int}}()
-    @test collect(chunks(10:9; size=2)) == Vector{StepRange{Int, Int}}()
-    @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64, Vector{StepRange{Int, Int}}}[]
-    @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64, Vector{StepRange{Int, Int}}}[]
+    @test collect(chunks(10:9; n=2)) == Vector{StepRange{Int,Int}}()
+    @test collect(chunks(10:9; size=2)) == Vector{StepRange{Int,Int}}()
+    @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
+    @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
 end
 
 @testitem "Minimial interface" begin
