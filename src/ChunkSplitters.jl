@@ -276,10 +276,10 @@ function getchunk(itr, ichunk::Integer; n::Integer=0, size::Integer=0, split::Sy
     length(itr) == 0 && return nothing
     n != 0 || size != 0 || missing_input_err()
     n != 0 && size != 0 && mutually_exclusive_err()
-    if (n != 0 && size == 0)
+    if n != 0
         C = FixedCount
         n >= 1 || throw(ArgumentError("n must be >= 1"))
-    elseif (n == 0 && size != 0)
+    else
         C = FixedSize
         size >= 1 || throw(ArgumentError("size must be >= 1"))
         l = length(itr)
