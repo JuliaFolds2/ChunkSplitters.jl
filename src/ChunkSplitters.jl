@@ -100,9 +100,9 @@ end
 is_chunkable(::Chunk) = true
 
 # Constructor for the chunks
-function chunks(itr; 
-    n::Union{Nothing, Integer}=nothing, 
-    size::Union{Nothing, Integer}=nothing, 
+function chunks(itr;
+    n::Union{Nothing,Integer}=nothing,
+    size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch
 )
     !isnothing(n) || !isnothing(size) || missing_input_err()
@@ -118,7 +118,7 @@ function chunks(itr;
     size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
     (split in split_types) || split_err()
-    Chunk{typeof(itr), C}(itr, min(length(itr), n_input), min(length(itr), size_input), split)
+    Chunk{typeof(itr),C}(itr, min(length(itr), n_input), min(length(itr), size_input), split)
 end
 function missing_input_err()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
@@ -278,9 +278,9 @@ julia> getchunk(x, 3; size=3)
 
 
 """
-function getchunk(itr, ichunk::Integer; 
-    n::Union{Nothing, Integer}=nothing, 
-    size::Union{Nothing,Integer}=nothing, 
+function getchunk(itr, ichunk::Integer;
+    n::Union{Nothing,Integer}=nothing,
+    size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch
 )
     length(itr) == 0 && return nothing
@@ -580,8 +580,8 @@ end
         end
         return s
     end
-    x = rand(10^3);
-    b = @benchmark f($x) samples=1 evals=1 
+    x = rand(10^3)
+    b = @benchmark f($x) samples = 1 evals = 1
     @test b.allocs == 0
 end
 
