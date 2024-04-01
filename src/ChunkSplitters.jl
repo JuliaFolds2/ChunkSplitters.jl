@@ -557,7 +557,9 @@ end
     @test eltype(chunks(x; n=2)) == StepRange{Int,Int}
     # test inference of chunks
     @test chunks(1:7; n=4) == @inferred chunks(1:7; n=4)
+    @test chunks(1:7; n=4, split=:scatter) == @inferred chunks(1:7; n=4, split=:scatter)
     @test chunks(1:7; size=4) == @inferred chunks(1:7; size=4)
+    @test chunks(1:7; size=4, split=:scatter) == @inferred chunks(1:7; size=4, split=:scatter)
 end
 
 @testitem "Minimial interface" begin
