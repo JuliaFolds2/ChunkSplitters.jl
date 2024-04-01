@@ -105,7 +105,6 @@ function chunks(itr;
     size::Union{Nothing, Integer}=nothing, 
     split::Symbol=:batch
 )
-    length(itr) == 0 && return nothing
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
     if !isnothing(n)
