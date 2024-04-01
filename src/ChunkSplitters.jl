@@ -100,7 +100,7 @@ end
 is_chunkable(::Chunk) = true
 
 # Constructor for the chunks
-function chunks(data; 
+function chunks(itr; 
     n::Union{Nothing, Integer}=nothing, 
     size::Union{Nothing, Integer}=nothing, 
     split::Symbol=:batch
@@ -117,9 +117,9 @@ function chunks(data;
     end
     n_input = isnothing(n) ? 0 : n
     size_input = isnothing(size) ? 0 : size
-    is_chunkable(data) || not_chunkable_err(data)
+    is_chunkable(itr) || not_chunkable_err(itr)
     (split in split_types) || split_err()
-    Chunk{typeof(data), C}(data, min(length(data), n_input), min(length(data), size_input), split)
+    Chunk{typeof(itr), C}(itr, min(length(itr), n_input), min(length(itr), size_input), split)
 end
 function missing_input_err()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
