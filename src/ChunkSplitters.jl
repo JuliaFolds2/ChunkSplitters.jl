@@ -530,6 +530,7 @@ end
 
 @testitem "return type" begin
     using ChunkSplitters: chunks, getchunk
+    using BenchmarkTools: @benchmark
     @test typeof(getchunk(1:10, 1; n=2, split=:batch)) == StepRange{Int,Int}
     @test typeof(getchunk(1:10, 1; size=2, split=:batch)) == StepRange{Int,Int}
     @test typeof(getchunk(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
@@ -560,6 +561,18 @@ end
     @test chunks(1:7; n=4, split=:scatter) == @inferred chunks(1:7; n=4, split=:scatter)
     @test chunks(1:7; size=4) == @inferred chunks(1:7; size=4)
     @test chunks(1:7; size=4, split=:scatter) == @inferred chunks(1:7; size=4, split=:scatter)
+    function f(x)
+        s = zero(eltype(x))
+        for inds in chunks(x; n=4)
+            for i in inds
+                s += x[i]
+            end
+        end
+        return s
+    end
+    x = rand(10^3);
+    b = @benchmark f($x) samples=1 evals=1 
+    @test b.allocs == 0
 end
 
 @testitem "Minimial interface" begin
