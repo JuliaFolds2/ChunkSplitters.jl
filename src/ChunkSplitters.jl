@@ -571,9 +571,9 @@ end
     @test chunks(1:7; n=4, split=:scatter) == @inferred chunks(1:7; n=4, split=:scatter)
     @test chunks(1:7; size=4) == @inferred chunks(1:7; size=4)
     @test chunks(1:7; size=4, split=:scatter) == @inferred chunks(1:7; size=4, split=:scatter)
-    function f(x)
+    function f(x; n=nothing, size=nothing)
         s = zero(eltype(x))
-        for inds in chunks(x; n=4)
+        for inds in chunks(x; n=n, size=size)
             for i in inds
                 s += x[i]
             end
@@ -581,7 +581,9 @@ end
         return s
     end
     x = rand(10^3)
-    b = @benchmark f($x) samples = 1 evals = 1
+    b = @benchmark f($x; n=4) samples = 1 evals = 1
+    @test b.allocs == 0
+    b = @benchmark f($x; size=10) samples = 1 evals = 1
     @test b.allocs == 0
 end
 
