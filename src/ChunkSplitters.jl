@@ -7,6 +7,7 @@ import Base: firstindex, lastindex, getindex
 
 export chunks, getchunk
 @compat public is_chunkable
+@compat public Chunk
 
 """
     chunks(itr; n::Union{Nothing, Integer}, size::Union{Nothing, Integer} [, split::Symbol=:batch])
@@ -92,6 +93,14 @@ is_chunkable(::Tuple) = true
 abstract type SplitterType end
 struct BatchSplitter <: SplitterType end
 struct ScatterSplitter <: SplitterType end
+#=
+If we export the types, we are making the interaface 
+
+chunks(1:7, BatchSplitter; n=3)
+
+and similar public. It might not be a bad idea, but the 
+benefits seem marginal now.
+=#
 #export BatchSplitter, ScatterSplitter
 
 const split_types = (:batch, :scatter)
@@ -108,6 +117,15 @@ struct Chunk{T,C<:Constraint,S<:SplitterType}
     size::Int
 end
 is_chunkable(::Chunk) = true
+
+@testitem "Chunk parametric types order" begin
+    # Try not to break the order of the type parameters. Chunk is 
+    # not part of the interface (currently), so its being used
+    # by OhMyThreads, so we probably should make it documented
+    @test Chunk{typeof(1:7), FixedCount, BatchSplitter}(1:7, 3, 0) == 
+        Chunk{UnitRange{Int64}, FixedCount, BatchSplitter}(1:7, 3, 0)
+    @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
+end
 
 # Constructor for the chunks
 function chunks(itr;
