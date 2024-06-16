@@ -608,8 +608,8 @@ end
         cy = getchunk(ys, ichunk; size=size, split=:batch)
         return Iterators.zip(cx, cy)
     end
-    @test @inferred mwe() == zip(3:4, 3:4)
-    @test @inferred mwe_size() == zip(3:4, 3:4)
+    @test zip(3:4, 3:4) == @inferred mwe()
+    @test zip(3:4, 3:4) == @inferred mwe_size()
     @test_throws ArgumentError getchunk(1:10, 1; n=2, split=:error)
     x = rand(10)
     @test typeof(first(chunks(x; n=5))) == UnitRange{Int}
