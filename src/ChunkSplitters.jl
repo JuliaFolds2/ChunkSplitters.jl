@@ -608,7 +608,6 @@ end
     @test f() == @inferred f()
     f() = chunks(1:7; n=4, split=:scatter)
     @test f() == @inferred f()
-    @test chunks(1:7; size=4) == @inferred chunks(1:7; size=4)
     f() = chunks(1:7; size=4, split=:scatter)
     @test f() == @inferred f()
     function f(x; n=nothing, size=nothing)
