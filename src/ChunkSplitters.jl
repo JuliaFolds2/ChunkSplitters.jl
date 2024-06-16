@@ -102,7 +102,7 @@ struct FixedCount <: Constraint end
 struct FixedSize <: Constraint end
 
 # Structure that carries the chunks data
-struct Chunk{T,S<:SplitterType,C<:Constraint}
+struct Chunk{T,C<:Constraint,S<:SplitterType}
     itr::T
     n::Int
     size::Int
@@ -140,7 +140,7 @@ function chunks(itr, split::Type{<:SplitterType};
     n_input = isnothing(n) ? 0 : n
     size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
-    return Chunk{typeof(itr),split,C}(itr, min(length(itr), n_input), min(length(itr), size_input))
+    return Chunk{typeof(itr),C,split}(itr, min(length(itr), n_input), min(length(itr), size_input))
 end
 
 function missing_input_err()
@@ -154,10 +154,10 @@ function not_chunkable_err(::T) where {T}
 end
 @noinline split_err() = throw(ArgumentError("split must be one of $split_types"))
 
-length(c::Chunk{T,S,FixedCount}) where {T,S} = c.n
-length(c::Chunk{T,S,FixedSize}) where {T,S} = cld(length(c.itr), max(1, c.size))
-eltype(::Chunk{T,BatchSplitter}) where {T} = UnitRange{Int}
-eltype(::Chunk{T,ScatterSplitter}) where {T} = StepRange{Int,Int}
+length(c::Chunk{T,FixedCount,S}) where {T,S} = c.n
+length(c::Chunk{T,FixedSize,S}) where {T,S} = cld(length(c.itr), max(1, c.size))
+eltype(::Chunk{T,C,BatchSplitter}) where {T,C} = UnitRange{Int}
+eltype(::Chunk{T,C,ScatterSplitter}) where {T,C} = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = length(c)
@@ -202,8 +202,8 @@ function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     end
     return nothing
 end
-eltype(::Enumerate{<:Chunk{T,BatchSplitter}}) where {T} = Tuple{Int,UnitRange{Int}}
-eltype(::Enumerate{<:Chunk{T,ScatterSplitter}}) where {T} = Tuple{Int,StepRange{Int,Int}}
+eltype(::Enumerate{<:Chunk{T,C,BatchSplitter}}) where {T,C} = Tuple{Int,UnitRange{Int}}
+eltype(::Enumerate{<:Chunk{T,C,ScatterSplitter}}) where {T,C} = Tuple{Int,StepRange{Int,Int}}
 
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
@@ -321,9 +321,7 @@ function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
-    if length(itr) == 0 
-        return nothing
-    end
+    length(itr) == 0 && return nothing
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
     if !isnothing(n)
@@ -344,9 +342,9 @@ function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
 end
 
 # convenient pass-forward methods
-getchunk(c::Chunk{T,S,FixedCount}, ichunk::Integer) where {T,S} = 
+getchunk(c::Chunk{T,FixedCount,S}, ichunk::Integer) where {T,S} = 
     getchunk(c.itr, ichunk, S; n=c.n, size=nothing)
-getchunk(c::Chunk{T,S,FixedSize}, ichunk::Integer) where {T,S} = 
+getchunk(c::Chunk{T,FixedSize,S}, ichunk::Integer) where {T,S} = 
     getchunk(c.itr, ichunk, S; n=nothing, size=c.size)
 
 function _getchunk(::Type{FixedCount}, ::Type{BatchSplitter}, itr, ichunk; n, kwargs...)
