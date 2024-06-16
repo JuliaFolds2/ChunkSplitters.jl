@@ -336,11 +336,14 @@ function getchunk(itr, ichunk::Integer;
     end
 end
 
+_empty_itr(::Type{BatchSplitter}) = 0:-1
+_empty_itr(::Type{ScatterSplitter}) = 0:1:-1
+
 function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
-    length(itr) == 0 && return nothing
+    length(itr) == 0 && return _empty_itr(split)
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
     if !isnothing(n)
@@ -614,12 +617,18 @@ end
     @test typeof(first(chunks(x; size=2))) == UnitRange{Int}
     @test eltype(chunks(x; n=2)) == UnitRange{Int}
     # Empty iterator
-    @test getchunk(10:9, 1; n=2) === nothing
-    @test getchunk(10:9, 1; size=2) === nothing
+    @test getchunk(10:9, 1; n=2) === 0:-1
+    @test getchunk(10:9, 1; size=2) === 0:-1
+    @test getchunk(10:9, 1; n=2, split=:scatter) === 0:1:-1
+    @test getchunk(10:9, 1; size=2, split=:scatter) === 0:1:-1
     @test collect(chunks(10:9; n=2)) == Vector{UnitRange{Int}}()
     @test collect(chunks(10:9; size=2)) == Vector{UnitRange{Int}}()
     @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
     @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
+    @test collect(chunks(10:9; n=2, split=:scatter)) == Vector{StepRange{Int,Int}}()
+    @test collect(chunks(10:9; size=2, split=:scatter)) == Vector{StepRange{Int,Int}}()
+    @test collect(enumerate(chunks(10:9; n=2, split=:scatter))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
+    @test collect(enumerate(chunks(10:9; size=2, split=:scatter))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
     # test inference of chunks
     f() = chunks(1:7; n=4)
     @test f() == @inferred f()
