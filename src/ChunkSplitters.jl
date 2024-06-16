@@ -92,6 +92,8 @@ is_chunkable(::Tuple) = true
 abstract type SplitterType end
 struct BatchSplitter <: SplitterType end
 struct ScatterSplitter <: SplitterType end
+export BatchSplitter, ScatterSplitter
+
 const split_types = (:batch, :scatter)
 
 # User defined constraint
