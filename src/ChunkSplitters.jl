@@ -122,6 +122,7 @@ is_chunkable(::Chunk) = true
     # Try not to break the order of the type parameters. Chunk is 
     # not part of the interface (currently), so its being used
     # by OhMyThreads, so we probably should make it documented
+    using ChunkSplitters: Chunk, FixedCount, BatchSplitter
     @test Chunk{typeof(1:7), FixedCount, BatchSplitter}(1:7, 3, 0) == 
         Chunk{UnitRange{Int64}, FixedCount, BatchSplitter}(1:7, 3, 0)
     @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
