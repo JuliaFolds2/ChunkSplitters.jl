@@ -114,15 +114,15 @@ function chunks(itr;
     split::Symbol=:batch
 )
     if split == :batch    
-        chunks(itr, Val(:batch); n, size)
+        chunks(itr, BatchSplitter; n, size)
     elseif split == :scatter
-        chunks(itr, Val(:scatter); n, size)
+        chunks(itr, ScatterSplitter; n, size)
     else
         split_err()
     end
 end
 
-function chunks(itr, split::Union{Val{:batch},Val{:scatter}};
+function chunks(itr, split::Type{<:Union{BatchSplitter,ScatterSplitter}};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
@@ -138,12 +138,7 @@ function chunks(itr, split::Union{Val{:batch},Val{:scatter}};
     n_input = isnothing(n) ? 0 : n
     size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
-    chunk = if split == Val(:batch)
-        Chunk{typeof(itr),BatchSplitter,C}(itr, min(length(itr), n_input), min(length(itr), size_input))
-    elseif split == Val(:scatter)
-        Chunk{typeof(itr),ScatterSplitter,C}(itr, min(length(itr), n_input), min(length(itr), size_input))
-    end
-    return chunk
+    return Chunk{typeof(itr),split,C}(itr, min(length(itr), n_input), min(length(itr), size_input))
 end
 
 function missing_input_err()
