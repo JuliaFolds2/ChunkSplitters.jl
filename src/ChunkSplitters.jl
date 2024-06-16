@@ -92,7 +92,7 @@ is_chunkable(::Tuple) = true
 abstract type SplitterType end
 struct BatchSplitter <: SplitterType end
 struct ScatterSplitter <: SplitterType end
-export BatchSplitter, ScatterSplitter
+#export BatchSplitter, ScatterSplitter
 
 const split_types = (:batch, :scatter)
 
@@ -321,7 +321,9 @@ function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
-    length(itr) == 0 && return nothing
+    if length(itr) == 0 
+        return nothing
+    end
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
     if !isnothing(n)
@@ -602,10 +604,13 @@ end
     @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
     @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
     # test inference of chunks
-    @test chunks(1:7; n=4) == @inferred chunks(1:7; n=4)
-    @test chunks(1:7; n=4, split=:scatter) == @inferred chunks(1:7; n=4, split=:scatter)
+    f() = chunks(1:7; n=4)
+    @test f() == @inferred f()
+    f() = chunks(1:7; n=4, split=:scatter)
+    @test f() == @inferred f()
     @test chunks(1:7; size=4) == @inferred chunks(1:7; size=4)
-    @test chunks(1:7; size=4, split=:scatter) == @inferred chunks(1:7; size=4, split=:scatter)
+    f() = chunks(1:7; size=4, split=:scatter)
+    @test f() == @inferred f()
     function f(x; n=nothing, size=nothing)
         s = zero(eltype(x))
         for inds in chunks(x; n=n, size=size)
