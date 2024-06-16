@@ -124,7 +124,7 @@ function chunks(itr;
     end
 end
 
-function chunks(itr, split::Type{<:SplitterType}=BatchSplitter;
+function chunks(itr, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
@@ -308,6 +308,19 @@ function getchunk(itr, ichunk::Integer;
     size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch
 )
+    if split == :batch
+        getchunk(itr, ichunk, BatchSplitter; n=n, size=size)
+    elseif split == :scatter
+        getchunk(itr, ichunk, ScatterSplitter; n=n, size=size)
+    else
+        split_err()
+    end
+end
+
+function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
+    n::Union{Nothing,Integer}=nothing,
+    size::Union{Nothing,Integer}=nothing,
+)
     length(itr) == 0 && return nothing
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
@@ -325,25 +338,14 @@ function getchunk(itr, ichunk::Integer;
     ichunk <= n_input || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
     ichunk <= length(itr) || throw(ArgumentError("ichunk must be less or equal to the length of `itr`"))
     is_chunkable(itr) || not_chunkable_err(itr)
-    chunk = if split == :batch
-        _getchunk(C, BatchSplitter, itr, ichunk; n, size)
-    elseif split == :scatter
-        _getchunk(C, ScatterSplitter, itr, ichunk; n, size)
-    else
-        split_err()
-    end
-    return chunk
+    return _getchunk(C, split, itr, ichunk; n, size)
 end
 
 # convenient pass-forward methods
-getchunk(c::Chunk{T,BatchSplitter,FixedCount}, ichunk::Integer) where {T} = 
-    getchunk(c.itr, ichunk; n=c.n, size=nothing, split=:batch)
-getchunk(c::Chunk{T,BatchSplitter,FixedSize}, ichunk::Integer) where {T} = 
-    getchunk(c.itr, ichunk; n=nothing, size=c.size, split=:batch)
-getchunk(c::Chunk{T,ScatterSplitter,FixedCount}, ichunk::Integer) where {T,} =
-    getchunk(c.itr, ichunk; n=c.n, size=nothing, split=:scatter)
-getchunk(c::Chunk{T,ScatterSplitter,FixedSize}, ichunk::Integer) where {T,} = 
-    getchunk(c.itr, ichunk; n=nothing, size=c.size, split=:scatter)
+getchunk(c::Chunk{T,S,FixedCount}, ichunk::Integer) where {T,S} = 
+    getchunk(c.itr, ichunk, S; n=c.n, size=nothing)
+getchunk(c::Chunk{T,S,FixedSize}, ichunk::Integer) where {T,S} = 
+    getchunk(c.itr, ichunk, S; n=nothing, size=c.size)
 
 function _getchunk(::Type{FixedCount}, ::Type{BatchSplitter}, itr, ichunk; n, kwargs...)
     l = length(itr)
