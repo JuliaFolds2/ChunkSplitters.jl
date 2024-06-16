@@ -124,7 +124,7 @@ function chunks(itr;
     end
 end
 
-function chunks(itr, split::Type{<:Union{BatchSplitter,ScatterSplitter}};
+function chunks(itr, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
