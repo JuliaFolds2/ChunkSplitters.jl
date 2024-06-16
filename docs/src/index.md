@@ -52,9 +52,9 @@ julia> x = rand(7);
 julia> for inds in chunks(x; n=3, split=:batch)
            @show inds
        end
-inds = 1:1:3
-inds = 4:1:5
-inds = 6:1:7
+inds = 1:3
+inds = 4:5
+inds = 6:7
 
 julia> for inds in chunks(x; n=3, split=:scatter)
            @show inds
@@ -66,8 +66,8 @@ inds = 3:3:6
 julia> for inds in chunks(x; size=4)
            @show inds
        end
-inds = 1:1:4
-inds = 5:1:7
+inds = 1:4
+inds = 5:7
 ```
 
 The chunk indices can be retrieved with the `enumerate` function, which is specialized
@@ -165,16 +165,16 @@ julia> using ChunkSplitters
 julia> x = rand(7);
 
 julia> getchunk(x, 1; n=3)
-1:1:3
+1:3
 
 julia> getchunk(x, 2; n=3)
-4:1:5
+4:5
 
 julia> getchunk(x, 3; n=3)
-6:1:7
+6:7
 
 julia> getchunk(x, 1; size=3)
-1:1:3
+1:3
 ```
 
 And using `split = :scatter`, we have:
