@@ -7,6 +7,7 @@ import Base: firstindex, lastindex, getindex
 
 export chunks, getchunk
 @compat public is_chunkable
+@compat public Chunk
 
 """
     chunks(itr; n::Union{Nothing, Integer}, size::Union{Nothing, Integer} [, split::Symbol=:batch])
@@ -36,22 +37,22 @@ julia> using ChunkSplitters
 julia> x = rand(7);
 
 julia> collect(chunks(x; n=3))
-3-element Vector{StepRange{Int64, Int64}}:
- 1:1:3
- 4:1:5
- 6:1:7
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:5
+ 6:7
 
 julia> collect(enumerate(chunks(x; n=3)))
-3-element Vector{Tuple{Int64, StepRange{Int64, Int64}}}:
- (1, 1:1:3)
- (2, 4:1:5)
- (3, 6:1:7)
+3-element Vector{Tuple{Int64, UnitRange{Int64}}}:
+ (1, 1:3)
+ (2, 4:5)
+ (3, 6:7)
 
 julia> collect(chunks(1:7; size=3))
-3-element Vector{StepRange{Int64, Int64}}:
- 1:1:3
- 4:1:6
- 7:1:7
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:6
+ 7:7
 ```
 
 Note that `chunks` also works just fine for `OffsetArray`s:
@@ -62,10 +63,16 @@ julia> using ChunkSplitters, OffsetArrays
 julia> x = OffsetArray(1:7, -1:5);
 
 julia> collect(chunks(x; n=3))
+3-element Vector{UnitRange{Int64}}:
+ -1:1
+ 2:3
+ 4:5
+
+julia> collect(chunks(x; n=3, split=:scatter))
 3-element Vector{StepRange{Int64, Int64}}:
- -1:1:1
- 2:1:3
- 4:1:5
+ -1:3:5
+ 0:3:3
+ 1:3:4
 ```
 
 """
@@ -83,6 +90,19 @@ is_chunkable(::Tuple) = true
 
 
 # Current chunks split types
+abstract type SplitterType end
+struct BatchSplitter <: SplitterType end
+struct ScatterSplitter <: SplitterType end
+#=
+If we export the types, we are making the interaface 
+
+chunks(1:7, BatchSplitter; n=3)
+
+and similar public. It might not be a bad idea, but the 
+benefits seem marginal now.
+=#
+#export BatchSplitter, ScatterSplitter
+
 const split_types = (:batch, :scatter)
 
 # User defined constraint
@@ -91,19 +111,41 @@ struct FixedCount <: Constraint end
 struct FixedSize <: Constraint end
 
 # Structure that carries the chunks data
-struct Chunk{T,C<:Constraint}
+struct Chunk{T,C<:Constraint,S<:SplitterType}
     itr::T
     n::Int
     size::Int
-    split::Symbol
 end
 is_chunkable(::Chunk) = true
+
+@testitem "Chunk parametric types order" begin
+    # Try not to break the order of the type parameters. Chunk is 
+    # not part of the interface (currently), so its being used
+    # by OhMyThreads, so we probably should make it documented
+    using ChunkSplitters: Chunk, FixedCount, BatchSplitter
+    @test Chunk{typeof(1:7), FixedCount, BatchSplitter}(1:7, 3, 0) == 
+        Chunk{UnitRange{Int64}, FixedCount, BatchSplitter}(1:7, 3, 0)
+    @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
+end
 
 # Constructor for the chunks
 function chunks(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch
+)
+    if split == :batch    
+        chunks(itr, BatchSplitter; n, size)
+    elseif split == :scatter
+        chunks(itr, ScatterSplitter; n, size)
+    else
+        split_err()
+    end
+end
+
+function chunks(itr, split::Type{<:SplitterType};
+    n::Union{Nothing,Integer}=nothing,
+    size::Union{Nothing,Integer}=nothing,
 )
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
@@ -117,9 +159,9 @@ function chunks(itr;
     n_input = isnothing(n) ? 0 : n
     size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
-    (split in split_types) || split_err()
-    Chunk{typeof(itr),C}(itr, min(length(itr), n_input), min(length(itr), size_input), split)
+    return Chunk{typeof(itr),C,split}(itr, min(length(itr), n_input), min(length(itr), size_input))
 end
+
 function missing_input_err()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
 end
@@ -129,12 +171,12 @@ end
 function not_chunkable_err(::T) where {T}
     throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or if it is compatible with the chunks minimal interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
 end
-@noinline split_err() =
-    throw(ArgumentError("split must be one of $split_types"))
+@noinline split_err() = throw(ArgumentError("split must be one of $split_types"))
 
-length(c::Chunk{T,FixedCount}) where {T} = c.n
-length(c::Chunk{T,FixedSize}) where {T} = cld(length(c.itr), max(1, c.size))
-eltype(::Chunk) = StepRange{Int,Int}
+length(c::Chunk{T,FixedCount,S}) where {T,S} = c.n
+length(c::Chunk{T,FixedSize,S}) where {T,S} = cld(length(c.itr), max(1, c.size))
+eltype(::Chunk{T,C,BatchSplitter}) where {T,C} = UnitRange{Int}
+eltype(::Chunk{T,C,ScatterSplitter}) where {T,C} = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = length(c)
@@ -179,7 +221,8 @@ function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
     end
     return nothing
 end
-eltype(::Enumerate{<:Chunk}) = Tuple{Int,StepRange{Int,Int}}
+eltype(::Enumerate{<:Chunk{T,C,BatchSplitter}}) where {T,C} = Tuple{Int,UnitRange{Int}}
+eltype(::Enumerate{<:Chunk{T,C,ScatterSplitter}}) where {T,C} = Tuple{Int,StepRange{Int,Int}}
 
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
@@ -207,10 +250,11 @@ length(ec::Enumerate{<:Chunk}) = length(ec.itr)
         end
     end
     @test sum(s) ≈ sum(x)
-    @test collect(enumerate(chunks(1:10; n=2))) == [(1, 1:1:5), (2, 6:1:10)]
+    @test collect(enumerate(chunks(1:10; n=2))) == [(1, 1:5), (2, 6:10)]
     @test collect(enumerate(chunks(rand(7); n=3))) ==
-          Tuple{Int64,StepRange{Int64,Int64}}[(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)]
-    @test eltype(enumerate(chunks(rand(7); n=3))) == Tuple{Int64,StepRange{Int64,Int64}}
+          Tuple{Int64,UnitRange{Int64}}[(1, 1:3), (2, 4:5), (3, 6:7)]
+    @test eltype(enumerate(chunks(rand(7); n=3))) == Tuple{Int64,UnitRange{Int64}}
+    @test eltype(enumerate(chunks(rand(7); n=3, split=:scatter))) == Tuple{Int64,StepRange{Int64,Int64}}
 end
 
 #
@@ -233,13 +277,13 @@ julia> using ChunkSplitters
 julia> x = rand(7);
 
 julia> getchunk(x, 1; n=3)
-1:1:3
+1:3
 
 julia> getchunk(x, 2; n=3)
-4:1:5
+4:5
 
 julia> getchunk(x, 3; n=3)
-6:1:7
+6:7
 ```
 
 And using `split = :scatter`, we have:
@@ -267,13 +311,13 @@ julia> using ChunkSplitters
 julia> x = rand(7);
 
 julia> getchunk(x, 1; size=3)
-1:1:3
+1:3
 
 julia> getchunk(x, 2; size=3)
-4:1:6
+4:6
 
 julia> getchunk(x, 3; size=3)
-7:1:7
+7:7
 ```
 
 
@@ -282,6 +326,19 @@ function getchunk(itr, ichunk::Integer;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch
+)
+    if split == :batch
+        getchunk(itr, ichunk, BatchSplitter; n=n, size=size)
+    elseif split == :scatter
+        getchunk(itr, ichunk, ScatterSplitter; n=n, size=size)
+    else
+        split_err()
+    end
+end
+
+function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
+    n::Union{Nothing,Integer}=nothing,
+    size::Union{Nothing,Integer}=nothing,
 )
     length(itr) == 0 && return nothing
     !isnothing(n) || !isnothing(size) || missing_input_err()
@@ -300,44 +357,41 @@ function getchunk(itr, ichunk::Integer;
     ichunk <= n_input || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
     ichunk <= length(itr) || throw(ArgumentError("ichunk must be less or equal to the length of `itr`"))
     is_chunkable(itr) || not_chunkable_err(itr)
-    (split in split_types) || split_err()
-    _getchunk(C, itr, ichunk; n, size, split)
+    return _getchunk(C, split, itr, ichunk; n, size)
 end
-# convenient pass-forward method
-getchunk(c::Chunk{T,C}, ichunk::Integer) where {T,C<:FixedCount} = getchunk(c.itr, ichunk; n=c.n, size=nothing, split=c.split)
-getchunk(c::Chunk{T,C}, ichunk::Integer) where {T,C<:FixedSize} = getchunk(c.itr, ichunk; n=nothing, size=c.size, split=c.split)
 
-function _getchunk(::Type{FixedCount}, itr, ichunk; n, split, kwargs...)
-    if split == :batch
-        l = length(itr)
-        n_per_chunk, n_remaining = divrem(l, n)
-        first = firstindex(itr) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
-        last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
-        step = 1
-    elseif split == :scatter
-        first = (firstindex(itr) - 1) + ichunk
-        last = lastindex(itr)
-        step = n
-    else
-        throw(ArgumentError("chunk split must be :batch or :scatter"))
-    end
+# convenient pass-forward methods
+getchunk(c::Chunk{T,FixedCount,S}, ichunk::Integer) where {T,S} = 
+    getchunk(c.itr, ichunk, S; n=c.n, size=nothing)
+getchunk(c::Chunk{T,FixedSize,S}, ichunk::Integer) where {T,S} = 
+    getchunk(c.itr, ichunk, S; n=nothing, size=c.size)
+
+function _getchunk(::Type{FixedCount}, ::Type{BatchSplitter}, itr, ichunk; n, kwargs...)
+    l = length(itr)
+    n_per_chunk, n_remaining = divrem(l, n)
+    first = firstindex(itr) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
+    last = (first - 1) + n_per_chunk + ifelse(ichunk <= n_remaining, 1, 0)
+    return first:last
+end
+
+function _getchunk(::Type{FixedCount}, ::Type{ScatterSplitter}, itr, ichunk; n, kwargs...)
+    first = (firstindex(itr) - 1) + ichunk
+    last = lastindex(itr)
+    step = n
     return first:step:last
 end
 
-function _getchunk(::Type{FixedSize}, itr, ichunk; size, split, kwargs...)
-    if split == :batch
-        first = firstindex(itr) + (ichunk - 1) * size
-        # last = min((first - 1) + size, length(itr)) # unfortunately doesn't work for offset arrays :(
-        d, r = divrem(length(itr), size)
-        n = d + (r != 0)
-        last = (first - 1) + ifelse(ichunk != n || n == d, size, r + (r == 0))
-        step = 1
-    elseif split == :scatter
-        throw(ArgumentError("split=:scatter not yet supported in combination with size keyword argument."))
-    else
-        throw(ArgumentError("chunk split must be :batch or :scatter"))
-    end
-    return first:step:last
+function _getchunk(::Type{FixedSize}, ::Type{BatchSplitter}, itr, ichunk; size, kwargs...)
+    first = firstindex(itr) + (ichunk - 1) * size
+    # last = min((first - 1) + size, length(itr)) # unfortunately doesn't work for offset arrays :(
+    d, r = divrem(length(itr), size)
+    n = d + (r != 0)
+    last = (first - 1) + ifelse(ichunk != n || n == d, size, r + (r == 0))
+    return first:last
+end
+
+function _getchunk(::Type{FixedSize}, ::Type{ScatterSplitter}, itr, ichunk; size, kwargs...)
+    throw(ArgumentError("split=:scatter not yet supported in combination with size keyword argument."))
 end
 
 #
@@ -473,16 +527,16 @@ end
     @test firstindex(enumerate(c)) == 1
     @test lastindex(c) == 4
     @test lastindex(enumerate(c)) == 4
-    @test first(c) == 1:1:2
-    @test first(enumerate(c)) == (1, 1:1:2)
-    @test last(c) == 5:1:5
-    @test last(enumerate(c)) == (4, 5:1:5)
-    @test c[2] == 3:1:3
+    @test first(c) == 1:2
+    @test first(enumerate(c)) == (1, 1:2)
+    @test last(c) == 5:5
+    @test last(enumerate(c)) == (4, 5:5)
+    @test c[2] == 3:3
     for (ic, c) in enumerate(chunks(1:10; n=2))
         if ic == 1
-            @test c == 1:1:5
+            @test c == 1:5
         elseif ic == 2
-            @test c == 6:1:10
+            @test c == 6:10
         end
     end
 
@@ -492,16 +546,16 @@ end
     @test firstindex(enumerate(c)) == 1
     @test lastindex(c) == 3
     @test lastindex(enumerate(c)) == 3
-    @test first(c) == 1:1:2
-    @test first(enumerate(c)) == (1, 1:1:2)
-    @test last(c) == 5:1:5
-    @test last(enumerate(c)) == (3, 5:1:5)
-    @test c[2] == 3:1:4
+    @test first(c) == 1:2
+    @test first(enumerate(c)) == (1, 1:2)
+    @test last(c) == 5:5
+    @test last(enumerate(c)) == (3, 5:5)
+    @test c[2] == 3:4
     for (ic, c) in enumerate(chunks(1:10; size=5))
         if ic == 1
-            @test c == 1:1:5
+            @test c == 1:5
         elseif ic == 2
-            @test c == 6:1:10
+            @test c == 6:10
         end
     end
 end
@@ -534,8 +588,8 @@ end
 @testitem "return type" begin
     using ChunkSplitters: chunks, getchunk
     using BenchmarkTools: @benchmark
-    @test typeof(getchunk(1:10, 1; n=2, split=:batch)) == StepRange{Int,Int}
-    @test typeof(getchunk(1:10, 1; size=2, split=:batch)) == StepRange{Int,Int}
+    @test typeof(getchunk(1:10, 1; n=2, split=:batch)) == UnitRange{Int}
+    @test typeof(getchunk(1:10, 1; size=2, split=:batch)) == UnitRange{Int}
     @test typeof(getchunk(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
     function mwe(ichunk=2, n=5, l=10)
         xs = collect(1:l)
@@ -551,26 +605,28 @@ end
         cy = getchunk(ys, ichunk; size=size, split=:batch)
         return Iterators.zip(cx, cy)
     end
-    @test @inferred mwe() == zip(3:1:4, 3:1:4)
-    @test @inferred mwe_size() == zip(3:1:4, 3:1:4)
+    @test @inferred mwe() == zip(3:4, 3:4)
+    @test @inferred mwe_size() == zip(3:4, 3:4)
     @test_throws ArgumentError getchunk(1:10, 1; n=2, split=:error)
     x = rand(10)
-    @test typeof(first(chunks(x; n=5))) == StepRange{Int,Int}
-    @test eltype(chunks(x; n=5)) == StepRange{Int,Int}
-    @test typeof(first(chunks(x; size=2))) == StepRange{Int,Int}
-    @test eltype(chunks(x; n=2)) == StepRange{Int,Int}
+    @test typeof(first(chunks(x; n=5))) == UnitRange{Int}
+    @test eltype(chunks(x; n=5)) == UnitRange{Int}
+    @test typeof(first(chunks(x; size=2))) == UnitRange{Int}
+    @test eltype(chunks(x; n=2)) == UnitRange{Int}
     # Empty iterator
     @test getchunk(10:9, 1; n=2) === nothing
     @test getchunk(10:9, 1; size=2) === nothing
-    @test collect(chunks(10:9; n=2)) == Vector{StepRange{Int,Int}}()
-    @test collect(chunks(10:9; size=2)) == Vector{StepRange{Int,Int}}()
-    @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
-    @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
+    @test collect(chunks(10:9; n=2)) == Vector{UnitRange{Int}}()
+    @test collect(chunks(10:9; size=2)) == Vector{UnitRange{Int}}()
+    @test collect(enumerate(chunks(10:9; n=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
+    @test collect(enumerate(chunks(10:9; size=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
     # test inference of chunks
-    @test chunks(1:7; n=4) == @inferred chunks(1:7; n=4)
-    @test chunks(1:7; n=4, split=:scatter) == @inferred chunks(1:7; n=4, split=:scatter)
-    @test chunks(1:7; size=4) == @inferred chunks(1:7; size=4)
-    @test chunks(1:7; size=4, split=:scatter) == @inferred chunks(1:7; size=4, split=:scatter)
+    f() = chunks(1:7; n=4)
+    @test f() == @inferred f()
+    f() = chunks(1:7; n=4, split=:scatter)
+    @test f() == @inferred f()
+    f() = chunks(1:7; size=4, split=:scatter)
+    @test f() == @inferred f()
     function f(x; n=nothing, size=nothing)
         s = zero(eltype(x))
         for inds in chunks(x; n=n, size=size)
@@ -595,10 +651,10 @@ end
     Base.length(::MinimalInterface) = 7
     ChunkSplitters.is_chunkable(::MinimalInterface) = true
     x = MinimalInterface()
-    @test collect(chunks(x; n=3)) == [1:1:3, 4:1:5, 6:1:7]
-    @test collect(enumerate(chunks(x; n=3))) == [(1, 1:1:3), (2, 4:1:5), (3, 6:1:7)]
-    @test eltype(enumerate(chunks(x; n=3))) == Tuple{Int64,StepRange{Int64,Int64}}
-    @test typeof(first(chunks(x; n=3))) == StepRange{Int,Int}
+    @test collect(chunks(x; n=3)) == [1:3, 4:5, 6:7]
+    @test collect(enumerate(chunks(x; n=3))) == [(1, 1:3), (2, 4:5), (3, 6:7)]
+    @test eltype(enumerate(chunks(x; n=3))) == Tuple{Int64,UnitRange{Int}}
+    @test typeof(first(chunks(x; n=3))) == UnitRange{Int}
     @test collect(chunks(x; n=3, split=:scatter)) == [1:3:7, 2:3:5, 3:3:6]
     @test collect(enumerate(chunks(x; n=3, split=:scatter))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
     @test eltype(enumerate(chunks(x; n=3, split=:scatter))) == Tuple{Int64,StepRange{Int64,Int64}}

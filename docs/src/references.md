@@ -40,10 +40,10 @@ julia> x = MinimalInterface()
 MinimalInterface()
 
 julia> collect(chunks(x; n=3))
-3-element Vector{StepRange{Int64, Int64}}:
- 1:1:3
- 4:1:5
- 6:1:7
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:5
+ 6:7
 
 julia> collect(chunks(x; n=3, split=:scatter))
 3-element Vector{StepRange{Int64, Int64}}:
