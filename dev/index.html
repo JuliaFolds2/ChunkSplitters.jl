@@ -6,9 +6,9 @@ julia&gt; x = rand(7);
 julia&gt; for inds in chunks(x; n=3, split=:batch)
            @show inds
        end
-inds = 1:1:3
-inds = 4:1:5
-inds = 6:1:7
+inds = 1:3
+inds = 4:5
+inds = 6:7
 
 julia&gt; for inds in chunks(x; n=3, split=:scatter)
            @show inds
@@ -20,8 +20,8 @@ inds = 3:3:6
 julia&gt; for inds in chunks(x; size=4)
            @show inds
        end
-inds = 1:1:4
-inds = 5:1:7</code></pre><p>The chunk indices can be retrieved with the <code>enumerate</code> function, which is specialized for the ChunkSplitters structure such that it works with <code>@threads</code>: </p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters, Base.Threads
+inds = 1:4
+inds = 5:7</code></pre><p>The chunk indices can be retrieved with the <code>enumerate</code> function, which is specialized for the ChunkSplitters structure such that it works with <code>@threads</code>: </p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters, Base.Threads
 
 julia&gt; x = rand(7);
 
@@ -68,16 +68,16 @@ julia&gt; sum(chunk_sums)
 julia&gt; x = rand(7);
 
 julia&gt; getchunk(x, 1; n=3)
-1:1:3
+1:3
 
 julia&gt; getchunk(x, 2; n=3)
-4:1:5
+4:5
 
 julia&gt; getchunk(x, 3; n=3)
-6:1:7
+6:7
 
 julia&gt; getchunk(x, 1; size=3)
-1:1:3</code></pre><p>And using <code>split = :scatter</code>, we have:</p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters 
+1:3</code></pre><p>And using <code>split = :scatter</code>, we have:</p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters 
 
 julia&gt; x = rand(7);
 
@@ -111,4 +111,4 @@ julia&gt; @btime sum(x -&gt; log(x)^7, $x);
   1.363 s (0 allocations: 0 bytes)
 
 julia&gt; @btime sum_parallel_getchunk(x -&gt; log(x)^7, $x; n=Threads.nthreads());
-  121.651 ms (100 allocations: 7.31 KiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="load_balancing/">Load balancing »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Tuesday 2 April 2024 11:44">Tuesday 2 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  121.651 ms (100 allocations: 7.31 KiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="load_balancing/">Load balancing »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Monday 17 June 2024 14:10">Monday 17 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
