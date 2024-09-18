@@ -40,7 +40,8 @@ The additional optional keyword `minchunksize` sets a minimum size for the chunk
     Defining the chunks with `size` was introduced in version 2.3.0, and is only compatible with the `:batch` 
     chunking option. 
 
-    The `minchunksize` keyword was introduced in version 2.6.0.
+    The `minchunksize` keyword, and the `BatchSplit` and `ScatterSplit` types as alternatives to `:batch`
+    and `:scatter` symbols, were introduced in version 2.6.0.
 
 
 ## Basic interface
