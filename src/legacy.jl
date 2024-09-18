@@ -1,6 +1,6 @@
 #
 # This file contains the interface for the 2.0 series of ChunkSplitters.jl
-# 
+#
 # This interface will be deprecated in the future version 3.0, but it is kept here for
 # backwards compatibility.
 #
