@@ -475,26 +475,28 @@ end
     using ChunkSplitters: chunks
     using OffsetArrays: OffsetArray
     using ChunkSplitters.Testing: test_chunks, test_sum
-    @test test_chunks(; array_length=1, n=1, size=nothing, split=:scatter, result=[1:1])
-    @test test_chunks(; array_length=2, n=1, size=nothing, split=:scatter, result=[1:2])
-    @test test_chunks(; array_length=2, n=2, size=nothing, split=:scatter, result=[1:1, 2:2])
-    @test test_chunks(; array_length=3, n=2, size=nothing, split=:scatter, result=[1:2:3, 2:2:2])
-    @test test_chunks(; array_length=7, n=3, size=nothing, split=:scatter, result=[1:3:7, 2:3:5, 3:3:6])
-    @test test_chunks(; array_length=12, n=4, size=nothing, split=:scatter, result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
-    @test test_chunks(; array_length=15, n=4, size=nothing, split=:scatter, result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
-    @test test_sum(; array_length=1, n=1, size=nothing, split=:scatter)
-    @test test_sum(; array_length=2, n=1, size=nothing, split=:scatter)
-    @test test_sum(; array_length=2, n=2, size=nothing, split=:scatter)
-    @test test_sum(; array_length=3, n=2, size=nothing, split=:scatter)
-    @test test_sum(; array_length=7, n=3, size=nothing, split=:scatter)
-    @test test_sum(; array_length=12, n=4, size=nothing, split=:scatter)
-    @test test_sum(; array_length=15, n=4, size=nothing, split=:scatter)
-    @test test_sum(; array_length=117, n=4, size=nothing, split=:scatter)
-    x = OffsetArray(1:7, -1:5)
-    @test collect.(chunks(x; n=3, split=:scatter)) == [[-1, 2, 5], [0, 3], [1, 4]]
+    for split in (:scatter, ScatterSplitter())
+        @test test_chunks(; array_length=1, n=1, size=nothing, split=split, result=[1:1])
+        @test test_chunks(; array_length=2, n=1, size=nothing, split=split, result=[1:2])
+        @test test_chunks(; array_length=2, n=2, size=nothing, split=split, result=[1:1, 2:2])
+        @test test_chunks(; array_length=3, n=2, size=nothing, split=split, result=[1:2:3, 2:2:2])
+        @test test_chunks(; array_length=7, n=3, size=nothing, split=split, result=[1:3:7, 2:3:5, 3:3:6])
+        @test test_chunks(; array_length=12, n=4, size=nothing, split=split, result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
+        @test test_chunks(; array_length=15, n=4, size=nothing, split=split, result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
+        @test test_sum(; array_length=1, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=3, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=7, n=3, size=nothing, split=split)
+        @test test_sum(; array_length=12, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=15, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=117, n=4, size=nothing, split=split)
+        x = OffsetArray(1:7, -1:5)
+        @test collect.(chunks(x; n=3, split=split)) == [[-1, 2, 5], [0, 3], [1, 4]]
 
-    # FixedSize
-    @test_throws ArgumentError collect(chunks(1:10; size=2, split=:scatter)) # not supported (yet?)
+        # FixedSize
+        @test_throws ArgumentError collect(chunks(1:10; size=2, split=split)) # not supported (yet?)
+    end
 end
 
 @testitem ":batch" begin
@@ -502,47 +504,49 @@ end
     using OffsetArrays: OffsetArray
     using ChunkSplitters.Testing: test_chunks, test_sum
     # FixedCount
-    @test test_chunks(; array_length=1, n=1, size=nothing, split=:batch, result=[1:1])
-    @test test_chunks(; array_length=2, n=1, size=nothing, split=:batch, result=[1:2])
-    @test test_chunks(; array_length=2, n=2, size=nothing, split=:batch, result=[1:1, 2:2])
-    @test test_chunks(; array_length=3, n=2, size=nothing, split=:batch, result=[1:2, 3:3])
-    @test test_chunks(; array_length=7, n=3, size=nothing, split=:batch, result=[1:3, 4:5, 6:7])
-    @test test_chunks(; array_length=12, n=4, size=nothing, split=:batch, result=[1:3, 4:6, 7:9, 10:12])
-    @test test_chunks(; array_length=15, n=4, size=nothing, split=:batch, result=[1:4, 5:8, 9:12, 13:15])
-    @test test_sum(; array_length=1, n=1, size=nothing, split=:batch)
-    @test test_sum(; array_length=2, n=1, size=nothing, split=:batch)
-    @test test_sum(; array_length=2, n=2, size=nothing, split=:batch)
-    @test test_sum(; array_length=3, n=2, size=nothing, split=:batch)
-    @test test_sum(; array_length=7, n=3, size=nothing, split=:batch)
-    @test test_sum(; array_length=12, n=4, size=nothing, split=:batch)
-    @test test_sum(; array_length=15, n=4, size=nothing, split=:batch)
-    @test test_sum(; array_length=117, n=4, size=nothing, split=:batch)
-    x = OffsetArray(1:7, -1:5)
-    @test collect.(chunks(x; n=3, split=:batch)) == [[-1, 0, 1], [2, 3], [4, 5]]
+    for split in (:batch, BatchSplitter())
+        @test test_chunks(; array_length=1, n=1, size=nothing, split=split, result=[1:1])
+        @test test_chunks(; array_length=2, n=1, size=nothing, split=split, result=[1:2])
+        @test test_chunks(; array_length=2, n=2, size=nothing, split=split, result=[1:1, 2:2])
+        @test test_chunks(; array_length=3, n=2, size=nothing, split=split, result=[1:2, 3:3])
+        @test test_chunks(; array_length=7, n=3, size=nothing, split=split, result=[1:3, 4:5, 6:7])
+        @test test_chunks(; array_length=12, n=4, size=nothing, split=split, result=[1:3, 4:6, 7:9, 10:12])
+        @test test_chunks(; array_length=15, n=4, size=nothing, split=split, result=[1:4, 5:8, 9:12, 13:15])
+        @test test_sum(; array_length=1, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=3, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=7, n=3, size=nothing, split=split)
+        @test test_sum(; array_length=12, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=15, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=117, n=4, size=nothing, split=split)
+        x = OffsetArray(1:7, -1:5)
+        @test collect.(chunks(x; n=3, split=split)) == [[-1, 0, 1], [2, 3], [4, 5]]
 
-    # FixedSize
-    @test test_chunks(; array_length=1, n=nothing, size=1, split=:batch, result=[1:1])
-    @test test_chunks(; array_length=2, n=nothing, size=2, split=:batch, result=[1:2])
-    @test test_chunks(; array_length=2, n=nothing, size=1, split=:batch, result=[1:1, 2:2])
-    @test test_chunks(; array_length=3, n=nothing, size=2, split=:batch, result=[1:2, 3:3])
-    @test test_chunks(; array_length=4, n=nothing, size=1, split=:batch, result=[1:1, 2:2, 3:3, 4:4])
-    @test test_chunks(; array_length=7, n=nothing, size=3, split=:batch, result=[1:3, 4:6, 7:7])
-    @test test_chunks(; array_length=7, n=nothing, size=4, split=:batch, result=[1:4, 5:7])
-    @test test_chunks(; array_length=7, n=nothing, size=5, split=:batch, result=[1:5, 6:7])
-    @test test_chunks(; array_length=12, n=nothing, size=3, split=:batch, result=[1:3, 4:6, 7:9, 10:12])
-    @test test_chunks(; array_length=15, n=nothing, size=4, split=:batch, result=[1:4, 5:8, 9:12, 13:15])
-    @test test_sum(; array_length=1, n=nothing, size=1, split=:batch)
-    @test test_sum(; array_length=2, n=nothing, size=2, split=:batch)
-    @test test_sum(; array_length=2, n=nothing, size=1, split=:batch)
-    @test test_sum(; array_length=3, n=nothing, size=2, split=:batch)
-    @test test_sum(; array_length=4, n=nothing, size=1, split=:batch)
-    @test test_sum(; array_length=7, n=nothing, size=3, split=:batch)
-    @test test_sum(; array_length=7, n=nothing, size=4, split=:batch)
-    @test test_sum(; array_length=7, n=nothing, size=5, split=:batch)
-    @test test_sum(; array_length=12, n=nothing, size=3, split=:batch)
-    @test test_sum(; array_length=15, n=nothing, size=4, split=:batch)
-    x = OffsetArray(1:7, -1:5)
-    @test collect.(chunks(x; n=nothing, size=3, split=:batch)) == [[-1, 0, 1], [2, 3, 4], [5]]
+        # FixedSize
+        @test test_chunks(; array_length=1, n=nothing, size=1, split=split, result=[1:1])
+        @test test_chunks(; array_length=2, n=nothing, size=2, split=split, result=[1:2])
+        @test test_chunks(; array_length=2, n=nothing, size=1, split=split, result=[1:1, 2:2])
+        @test test_chunks(; array_length=3, n=nothing, size=2, split=split, result=[1:2, 3:3])
+        @test test_chunks(; array_length=4, n=nothing, size=1, split=split, result=[1:1, 2:2, 3:3, 4:4])
+        @test test_chunks(; array_length=7, n=nothing, size=3, split=split, result=[1:3, 4:6, 7:7])
+        @test test_chunks(; array_length=7, n=nothing, size=4, split=split, result=[1:4, 5:7])
+        @test test_chunks(; array_length=7, n=nothing, size=5, split=split, result=[1:5, 6:7])
+        @test test_chunks(; array_length=12, n=nothing, size=3, split=split, result=[1:3, 4:6, 7:9, 10:12])
+        @test test_chunks(; array_length=15, n=nothing, size=4, split=split, result=[1:4, 5:8, 9:12, 13:15])
+        @test test_sum(; array_length=1, n=nothing, size=1, split=split)
+        @test test_sum(; array_length=2, n=nothing, size=2, split=split)
+        @test test_sum(; array_length=2, n=nothing, size=1, split=split)
+        @test test_sum(; array_length=3, n=nothing, size=2, split=split)
+        @test test_sum(; array_length=4, n=nothing, size=1, split=split)
+        @test test_sum(; array_length=7, n=nothing, size=3, split=split)
+        @test test_sum(; array_length=7, n=nothing, size=4, split=split)
+        @test test_sum(; array_length=7, n=nothing, size=5, split=split)
+        @test test_sum(; array_length=12, n=nothing, size=3, split=split)
+        @test test_sum(; array_length=15, n=nothing, size=4, split=split)
+        x = OffsetArray(1:7, -1:5)
+        @test collect.(chunks(x; n=nothing, size=3, split=split)) == [[-1, 0, 1], [2, 3, 4], [5]]
+    end
 end
 
 @testitem "indexing" begin
