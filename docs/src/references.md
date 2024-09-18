@@ -45,7 +45,7 @@ julia> collect(chunks(x; n=3))
  4:5
  6:7
 
-julia> collect(chunks(x; n=3, split=:scatter))
+julia> collect(chunks(x; n=3, split=ScatterSplit()))
 3-element Vector{StepRange{Int64, Int64}}:
  1:3:7
  2:3:5

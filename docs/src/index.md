@@ -24,13 +24,13 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 The main interface is the `chunks` iterator, and the enumeration of chunks, with `enumerate`.
 
 ```julia
-chunks(array::AbstractArray; n::Int, size::Int, split::Symbol=:batch, minchunksize::Int)
+chunks(array::AbstractArray; n::Int, size::Int, split::Union{Symbol, SplitStrategy}=BatchSplit(), minchunksize::Int)
 ```
-This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `split` parameter is optional. If `split == :batch`, the ranges are consecutive (default behavior). If `split == :scatter`, the range is scattered over the array. The different chunking variants are illustrated in the following figure: 
+This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `split` parameter is optional. If `split == BatchSplit()` (or `split == :batch`), the ranges are consecutive (default behavior). If `split == ScatterSplit()` (or `split == :scatter`), the range is scattered over the array. The different chunking variants are illustrated in the following figure: 
 
 ![splitter types](./assets/splitters.svg)
 
-For `split=:batch`, each chunk is "filled up" with work items one after another such that all chunks hold approximately the same number of work items (as far as possible). For `split=:scatter`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
+For `split=BatchSplit()` (default), each chunk is "filled up" with work items one after another such that all chunks hold approximately the same number of work items (as far as possible). For `split=ScatterSplit()`, the work items are assigned to chunks in a round-robin fashion. As shown below, this way of chunking can be beneficial if the workload (i.e. the computational weight) for different items is uneven. 
 
 The chunks can be defined by their number `n`, or by their size `size`, in the call to the `chunks` method. If `n` is set, the chunks will have the most even distribution of sizes possible, while if `size` is set, the chunks will have a constant size, except for possible last remaining chunk.   
 
@@ -52,14 +52,14 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> for inds in chunks(x; n=3, split=:batch)
+julia> for inds in chunks(x; n=3, split=BatchSplit())
            @show inds
        end
 inds = 1:3
 inds = 4:5
 inds = 6:7
 
-julia> for inds in chunks(x; n=3, split=:scatter)
+julia> for inds in chunks(x; n=3, split=ScatterSplit())
            @show inds
        end
 inds = 1:3:7
@@ -166,14 +166,14 @@ julia> sum(chunk_sums)
 
 The package also provides a lower-level `getchunk` function:
 ```julia-repl
-getchunk(array::AbstractArray, ichunk::Int; n::Int, size::Int, split::Symbol=:batch)
+getchunk(array::AbstractArray, ichunk::Int; n::Int, size::Int, split::Union{SplitStrategy, Symbol}=BatchSplit())
 ```
 that returns the range of indices corresponding to the work items in the input `array` that are associated with chunk number `ichunk`. 
 
 The chunks can be defined by their number, `n`, or by their size `size`.
 
 For example, if we have an array of 7 elements, and the work on the elements is divided
-into 3 chunks, we have (using the default `split == :batch` option):
+into 3 chunks, we have (using the default `split == BatchSplit()` option):
 
 ```jldoctest
 julia> using ChunkSplitters
@@ -193,20 +193,20 @@ julia> getchunk(x, 1; size=3)
 1:3
 ```
 
-And using `split = :scatter`, we have:
+And using `split = ScatterSplit()`, we have:
 
 ```jldoctest
 julia> using ChunkSplitters 
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1; n=3, split=:scatter)
+julia> getchunk(x, 1; n=3, split=ScatterSplit())
 1:3:7
 
-julia> getchunk(x, 2; n=3, split=:scatter)
+julia> getchunk(x, 2; n=3, split=ScatterSplit())
 2:3:5
 
-julia> getchunk(x, 3; n=3, split=:scatter)
+julia> getchunk(x, 3; n=3, split=ScatterSplit())
 3:3:6
 ```
 
