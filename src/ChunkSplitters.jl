@@ -1,13 +1,13 @@
 module ChunkSplitters
 
-using Compat: @compat
 using TestItems: @testitem
 import Base: iterate, length, eltype
 import Base: enumerate, firstindex, lastindex, getindex, eachindex
 
 export chunks, getchunk
-@compat public is_chunkable
-@compat public Chunk
+if VERSION >= v"1.11.0-DEV.469"
+    eval(Meta.parse("public is_chunkable, Chunk"))
+end
 
 """
     chunks(itr; n::Union{Nothing, Integer}, size::Union{Nothing, Integer} [, split::Symbol=:batch])
@@ -94,11 +94,11 @@ abstract type SplitterType end
 struct BatchSplitter <: SplitterType end
 struct ScatterSplitter <: SplitterType end
 #=
-If we export the types, we are making the interaface 
+If we export the types, we are making the interaface
 
 chunks(1:7, BatchSplitter; n=3)
 
-and similar public. It might not be a bad idea, but the 
+and similar public. It might not be a bad idea, but the
 benefits seem marginal now.
 =#
 #export BatchSplitter, ScatterSplitter
@@ -119,11 +119,11 @@ end
 is_chunkable(::Chunk) = true
 
 @testitem "Chunk parametric types order" begin
-    # Try not to break the order of the type parameters. Chunk is 
+    # Try not to break the order of the type parameters. Chunk is
     # not part of the interface (currently), so its being used
     # by OhMyThreads, so we probably should make it documented
     using ChunkSplitters: Chunk, FixedCount, BatchSplitter
-    @test Chunk{typeof(1:7), FixedCount, BatchSplitter}(1:7, 3, 0) == 
+    @test Chunk{typeof(1:7), FixedCount, BatchSplitter}(1:7, 3, 0) ==
         Chunk{UnitRange{Int64}, FixedCount, BatchSplitter}(1:7, 3, 0)
     @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
 end
@@ -134,7 +134,7 @@ function chunks(itr;
     size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch
 )
-    if split == :batch    
+    if split == :batch
         chunks(itr, BatchSplitter; n, size)
     elseif split == :scatter
         chunks(itr, ScatterSplitter; n, size)
@@ -367,9 +367,9 @@ function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
 end
 
 # convenient pass-forward methods
-getchunk(c::Chunk{T,FixedCount,S}, ichunk::Integer) where {T,S} = 
+getchunk(c::Chunk{T,FixedCount,S}, ichunk::Integer) where {T,S} =
     getchunk(c.itr, ichunk, S; n=c.n, size=nothing)
-getchunk(c::Chunk{T,FixedSize,S}, ichunk::Integer) where {T,S} = 
+getchunk(c::Chunk{T,FixedSize,S}, ichunk::Integer) where {T,S} =
     getchunk(c.itr, ichunk, S; n=nothing, size=c.size)
 
 function _getchunk(::Type{FixedCount}, ::Type{BatchSplitter}, itr, ichunk; n, kwargs...)
