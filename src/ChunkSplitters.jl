@@ -10,8 +10,8 @@ if VERSION >= v"1.11.0-DEV.469"
 end
 
 """
-    chunks(itr; 
-        n::Union{Nothing, Integer}, size::Union{Nothing, Integer} 
+    chunks(itr;
+        n::Union{Nothing, Integer}, size::Union{Nothing, Integer}
         [, split::Symbol=:batch]
         [, minchunksize::Union{Nothing,Integer}]
     )
@@ -28,7 +28,7 @@ consecutive. If `split == :scatter`, the range is scattered over `itr`.
 
 The optional argument `minchunksize` can be used to specify the minimum size of a chunk,
 and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
-are smaller than `minchunksize`, the number of chunks will be decreased to ensure that 
+are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
 each chunk is at least `minchunksize` long.
 
 If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
@@ -112,7 +112,7 @@ benefits seem marginal now.
 =#
 #export BatchSplitter, ScatterSplitter
 
-const split_types = (:batch, :scatter)
+const split_types = (:batch, :scatter, BatchSplitter(), ScatterSplitter())
 
 # User defined constraint
 abstract type Constraint end
@@ -141,20 +141,20 @@ end
 function chunks(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Symbol=:batch,
+    split::Union{Symbol, SplitterType}=BatchSplitter(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
-    if split == :batch
+    if split isa BatchSplitter || split == :batch
         chunks(itr, BatchSplitter; n, size, minchunksize)
-    elseif split == :scatter
+    elseif split isa ScatterSplitter || split == :scatter
         chunks(itr, ScatterSplitter; n, size, minchunksize)
     else
         split_err()
     end
 end
 
-_set_minchunksize(minchunksize::Nothing) = 1 
-function _set_minchunksize(minchunksize::Integer) 
+_set_minchunksize(minchunksize::Nothing) = 1
+function _set_minchunksize(minchunksize::Integer)
     minchunksize < 1 && throw(ArgumentError("minchunksize must be >= 1"))
     return minchunksize
 end
@@ -609,9 +609,9 @@ end
         local c = chunks(1:l; size=s)
         @test all(length(c[i]) == length(c[i+1]) for i in 1:length(c)-2) # only the last chunk may have different length
     end
-    @test collect(chunks(1:10; n=2, minchunksize=2)) == [1:5, 6:10] 
-    @test collect(chunks(1:10; n=5, minchunksize=3)) == [1:4, 5:7, 8:10] 
-    @test collect(chunks(1:11; n=10, minchunksize=3)) == [1:4, 5:8, 9:11] 
+    @test collect(chunks(1:10; n=2, minchunksize=2)) == [1:5, 6:10]
+    @test collect(chunks(1:10; n=5, minchunksize=3)) == [1:4, 5:7, 8:10]
+    @test collect(chunks(1:11; n=10, minchunksize=3)) == [1:4, 5:8, 9:11]
     @test_throws ArgumentError chunks(1:10; n=2, minchunksize=0)
     @test_throws ArgumentError chunks(1:10; size=2, minchunksize=2)
 end
