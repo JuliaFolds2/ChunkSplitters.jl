@@ -137,57 +137,54 @@ is_chunkable(::Chunk) = true
     @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
 end
 
+_chunks(itr, ::Val{:batch}; n, size, minchunksize) = chunks(itr, BatchSplitter; n, size, minchunksize)
+_chunks(itr, ::Val{:scatter}; n, size, minchunksize) = chunks(itr, ScatterSplitter; n, size, minchunksize)
+
 # Constructor for the chunks
 function chunks(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Symbol=:batch,
-    minchunksize::Int=1,
+    minchunksize::Union{Nothing,Integer}=nothing,
 )
-    if split == :batch
-        chunks(itr, BatchSplitter; n, size, minchunksize)
-    elseif split == :scatter
-        chunks(itr, ScatterSplitter; n, size, minchunksize)
-    else
-        split_err()
-    end
+    split in (:batch, :scatter) || split_err()
+    return _chunks(itr, Val(split); n, size, minchunksize)
+end
+
+_set_minchunksize(minchunksize::Nothing) = 1 
+function _set_minchunksize(minchunksize::Integer) 
+    minchunksize < 1 && throw(ArgumentError("minchunksize must be >= 1"))
+    return minchunksize
+end
+function _set_C_n_size(itr, n::Nothing, size, minchunksize)
+    !isnothing(minchunksize) && mutually_exclusive_err("size","minchunksize")
+    size < 1 && throw(ArgumentError("size must be >= 1"))
+    return FixedSize, 0, size
+end
+function _set_C_n_size(itr, n, size::Nothing, minchunksize)
+    n < 1 && throw(ArgumentError("n must be >= 1"))
+    mcs = _set_minchunksize(minchunksize)
+    nmax = min(length(itr) ÷ mcs, n)
+    FixedCount, nmax, 0
 end
 
 function chunks(itr, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    minchunksize::Int=1,
+    minchunksize::Union{Nothing,Integer}=nothing,
 )
-    !isnothing(n) || !isnothing(size) || missing_input_err()
-    !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
-    if !isnothing(n)
-        C = FixedCount
-        n >= 1 || throw(ArgumentError("n must be >= 1"))
-        if minchunksize < 1
-            throw(ArgumentError("minchunksize must be >= 1"))
-        end
-    else
-        C = FixedSize
-        size >= 1 || throw(ArgumentError("size must be >= 1"))
-    end
-    n_input = isnothing(n) ? 0 : n
-    size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
-    litr = length(itr)
-    nmax = litr ÷ minchunksize
-    chunk = Chunk{typeof(itr),C,split}(
-        itr, # iterator
-        minimum((litr, n_input, nmax)), # number of chunks (n option)
-        min(litr, size_input), # size of chunks (size option)
-   )
-   return chunk
+    isnothing(n) && isnothing(size) && missing_input_err()
+    !isnothing(size) && !isnothing(n) && mutually_exclusive_err("size","n")
+    C, n, size = _set_C_n_size(itr, n, size, minchunksize)
+    return Chunk{typeof(itr),C,split}(itr, n, size)
 end
 
 function missing_input_err()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
 end
-function mutually_exclusive_err()
-    throw(ArgumentError("n and size are mutually exclusive."))
+function mutually_exclusive_err(var1,var2)
+    throw(ArgumentError("$var1 and $var2 are mutually exclusive."))
 end
 function not_chunkable_err(::T) where {T}
     throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or if it is compatible with the chunks minimal interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
@@ -614,6 +611,7 @@ end
     @test collect(chunks(1:10; n=5, minchunksize=3)) == [1:4, 5:7, 8:10] 
     @test collect(chunks(1:11; n=10, minchunksize=3)) == [1:4, 5:8, 9:11] 
     @test_throws ArgumentError chunks(1:10; n=2, minchunksize=0)
+    @test_throws ArgumentError chunks(1:10; size=2, minchunksize=2)
 end
 
 @testitem "return type" begin
