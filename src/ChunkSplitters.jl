@@ -3,7 +3,7 @@ module ChunkSplitters
 using Compat: @compat
 using TestItems: @testitem
 import Base: iterate, length, eltype
-import Base: firstindex, lastindex, getindex
+import Base: enumerate, firstindex, lastindex, getindex, eachindex
 
 export chunks, getchunk
 @compat public is_chunkable
@@ -207,9 +207,9 @@ end
 struct Enumerate{I<:Chunk}
     itr::I
 end
-Base.enumerate(c::Chunk) = Enumerate(c)
+enumerate(c::Chunk) = Enumerate(c)
 
-function Base.iterate(ec::Enumerate{<:Chunk}, state=nothing)
+function iterate(ec::Enumerate{<:Chunk}, state=nothing)
     length(ec.itr.itr) == 0 && return nothing
     if isnothing(state)
         chunk = getchunk(ec.itr, 1)
@@ -229,6 +229,7 @@ firstindex(::Enumerate{<:Chunk}) = 1
 lastindex(ec::Enumerate{<:Chunk}) = lastindex(ec.itr)
 getindex(ec::Enumerate{<:Chunk}, i::Int) = (i, getchunk(ec.itr, i))
 length(ec::Enumerate{<:Chunk}) = length(ec.itr)
+eachindex(ec::Enumerate{<:Chunk}) = Base.OneTo(length(ec.itr))
 
 @testitem "enumerate chunks" begin
     using ChunkSplitters: chunks
@@ -255,6 +256,8 @@ length(ec::Enumerate{<:Chunk}) = length(ec.itr)
           Tuple{Int64,UnitRange{Int64}}[(1, 1:3), (2, 4:5), (3, 6:7)]
     @test eltype(enumerate(chunks(rand(7); n=3))) == Tuple{Int64,UnitRange{Int64}}
     @test eltype(enumerate(chunks(rand(7); n=3, split=:scatter))) == Tuple{Int64,StepRange{Int64,Int64}}
+    @test eachindex(enumerate(chunks(1:10; n=3))) == 1:3
+    @test eachindex(enumerate(chunks(1:10; size=2))) == 1:5
 end
 
 #
