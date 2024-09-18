@@ -24,11 +24,9 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 The main interface is the `chunks` iterator, and the enumeration of chunks, with `enumerate`.
 
 ```julia
-chunks(array::AbstractArray; n::Int, size::Int, split::Symbol=:batch)
+chunks(array::AbstractArray; n::Int, size::Int, split::Symbol=:batch, minchunksize::Int)
 ```
-This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `split` parameter is optional. If `split == :batch`, the ranges are consecutive (default behavior). If `split == :scatter`, the range is scattered over the array.
-
-The different chunking variants are illustrated in the following figure: 
+This iterator returns a vector of ranges which indicates the range of indices of the input `array` for each given chunk. The `split` parameter is optional. If `split == :batch`, the ranges are consecutive (default behavior). If `split == :scatter`, the range is scattered over the array. The different chunking variants are illustrated in the following figure: 
 
 ![splitter types](./assets/splitters.svg)
 
@@ -36,9 +34,14 @@ For `split=:batch`, each chunk is "filled up" with work items one after another 
 
 The chunks can be defined by their number `n`, or by their size `size`, in the call to the `chunks` method. If `n` is set, the chunks will have the most even distribution of sizes possible, while if `size` is set, the chunks will have a constant size, except for possible last remaining chunk.   
 
+The additional optional keyword `minchunksize` sets a minimum size for the chunks, when used in combination with the `n` keyword (thus effectively decreasing the number of chunks, `n`, if the size of each chunk is too small). 
+
 !!! compat
     Defining the chunks with `size` was introduced in version 2.3.0, and is only compatible with the `:batch` 
     chunking option. 
+
+    The `minchunksize` keyword was introduced in version 2.6.0.
+
 
 ## Basic interface
 
@@ -85,6 +88,19 @@ julia> @threads for (ichunk, inds) in enumerate(chunks(x; n=3))
 (ichunk, inds) = (2, 4:1:5)
 (ichunk, inds) = (3, 6:1:7)
 ```
+
+ Finally, we exemplify the use of `minchunksize`:
+
+ ```jldoctest
+julia> using ChunkSplitters 
+
+julia> collect(chunks(1:10; n=5, minchunksize=3))
+3-element Vector{UnitRange{Int64}}:
+ 1:4
+ 5:7
+ 8:10
+```
+Note that the effective number of chunks was `n=3`, because the `minchunksize` option have precedence over the definition of `n`. 
 
 ## Simple multi-threaded example
 
