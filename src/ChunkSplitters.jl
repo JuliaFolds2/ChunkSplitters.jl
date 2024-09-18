@@ -137,9 +137,6 @@ is_chunkable(::Chunk) = true
     @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
 end
 
-_chunks(itr, ::Val{:batch}, n, size, minchunksize) = chunks(itr, BatchSplitter; n, size, minchunksize)
-_chunks(itr, ::Val{:scatter}, n, size, minchunksize) = chunks(itr, ScatterSplitter; n, size, minchunksize)
-
 # Constructor for the chunks
 function chunks(itr;
     n::Union{Nothing,Integer}=nothing,
@@ -147,9 +144,13 @@ function chunks(itr;
     split::Symbol=:batch,
     minchunksize::Union{Nothing,Integer}=nothing,
 )
-    split in (:batch, :scatter) || split_err()
-    c = _chunks(itr, Val(split), n, size, minchunksize)
-    return c
+    if split == :batch
+        chunks(itr, BatchSplitter; n, size, minchunksize)
+    elseif split == :scatter
+        chunks(itr, ScatterSplitter; n, size, minchunksize)
+    else
+        split_err()
+    end
 end
 
 _set_minchunksize(minchunksize::Nothing) = 1 
