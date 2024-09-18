@@ -10,7 +10,11 @@ if VERSION >= v"1.11.0-DEV.469"
 end
 
 """
-    chunks(itr; n::Union{Nothing, Integer}, size::Union{Nothing, Integer} [, split::Symbol=:batch])
+    chunks(itr; 
+        n::Union{Nothing, Integer}, size::Union{Nothing, Integer} 
+        [, split::Symbol=:batch]
+        [, minchunksize::Integer=1]
+    )
 
 Returns an iterator that splits the *indices* of `itr` into
 `n`-many chunks (if `n` is given) or into chunks of a certain size (if `size` is given).
@@ -21,6 +25,11 @@ in parallel (e.g. with `@threads`).
 The optional argument `split` can be `:batch` (default) or `:scatter` and determines the
 distribution of the indices among the chunks. If `split == :batch`, chunk indices will be
 consecutive. If `split == :scatter`, the range is scattered over `itr`.
+
+The optional argument `minchunksize` can be used to specify the minimum size of a chunk,
+and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
+are smaller than `minchunksize`, the number of chunks will be decreased to ensure that 
+each chunk is at least `minchunksize` long.
 
 If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
 `enumerate(chunks(...))` can be used in conjuction with `@threads`.
@@ -132,12 +141,13 @@ end
 function chunks(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Symbol=:batch
+    split::Symbol=:batch,
+    minchunksize::Int=1,
 )
     if split == :batch
-        chunks(itr, BatchSplitter; n, size)
+        chunks(itr, BatchSplitter; n, size, minchunksize)
     elseif split == :scatter
-        chunks(itr, ScatterSplitter; n, size)
+        chunks(itr, ScatterSplitter; n, size, minchunksize)
     else
         split_err()
     end
@@ -146,12 +156,16 @@ end
 function chunks(itr, split::Type{<:SplitterType};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
+    minchunksize::Int=1,
 )
     !isnothing(n) || !isnothing(size) || missing_input_err()
     !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
     if !isnothing(n)
         C = FixedCount
         n >= 1 || throw(ArgumentError("n must be >= 1"))
+        if minchunksize < 1
+            throw(ArgumentError("minchunksize must be >= 1"))
+        end
     else
         C = FixedSize
         size >= 1 || throw(ArgumentError("size must be >= 1"))
@@ -159,7 +173,14 @@ function chunks(itr, split::Type{<:SplitterType};
     n_input = isnothing(n) ? 0 : n
     size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
-    return Chunk{typeof(itr),C,split}(itr, min(length(itr), n_input), min(length(itr), size_input))
+    litr = length(itr)
+    nmax = litr ÷ minchunksize
+    chunk = Chunk{typeof(itr),C,split}(
+        itr, # iterator
+        minimum((litr, n_input, nmax)), # number of chunks (n option)
+        min(litr, size_input), # size of chunks (size option)
+   )
+   return chunk
 end
 
 function missing_input_err()
@@ -589,6 +610,10 @@ end
         local c = chunks(1:l; size=s)
         @test all(length(c[i]) == length(c[i+1]) for i in 1:length(c)-2) # only the last chunk may have different length
     end
+    @test collect(chunks(1:10; n=2, minchunksize=2)) == [1:5, 6:10] 
+    @test collect(chunks(1:10; n=5, minchunksize=3)) == [1:4, 5:7, 8:10] 
+    @test collect(chunks(1:11; n=10, minchunksize=3)) == [1:4, 5:8, 9:11] 
+    @test_throws ArgumentError chunks(1:10; n=2, minchunksize=0)
 end
 
 @testitem "return type" begin
