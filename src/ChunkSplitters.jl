@@ -4,13 +4,17 @@ using TestItems: @testitem
 import Base: iterate, length, eltype
 import Base: enumerate, firstindex, lastindex, getindex, eachindex
 
-export chunks, getchunk
+export chunks, getchunk, SplitStrategy, BatchSplit, ScatterSplit
 if VERSION >= v"1.11.0-DEV.469"
     eval(Meta.parse("public is_chunkable, Chunk"))
 end
 
 """
-    chunks(itr; n::Union{Nothing, Integer}, size::Union{Nothing, Integer} [, split::Symbol=:batch])
+    chunks(itr;
+        n::Union{Nothing, Integer}, size::Union{Nothing, Integer}
+        [, split::Union{SplitStrategy, Symbol}=BatchSplit()]
+        [, minchunksize::Union{Nothing,Integer}]
+    )
 
 Returns an iterator that splits the *indices* of `itr` into
 `n`-many chunks (if `n` is given) or into chunks of a certain size (if `size` is given).
@@ -18,9 +22,18 @@ The keyword arguments `n` and `size` are mutually exclusive.
 The returned iterator can be used to process chunks of `itr` one after another or
 in parallel (e.g. with `@threads`).
 
-The optional argument `split` can be `:batch` (default) or `:scatter` and determines the
-distribution of the indices among the chunks. If `split == :batch`, chunk indices will be
-consecutive. If `split == :scatter`, the range is scattered over `itr`.
+The optional argument `split` can be `BatchSplit()` (or `:batch`) (default) or
+`ScatterSplit()` (or `:scatter`) and determines the distribution of the indices among the
+chunks.
+If `split == BatchSplit()`, chunk indices will be consecutive.
+If `split == ScatterSplit()`, the range is scattered over `itr`.
+Note that providing `split` in form of symbols (`:batch` or `:scatter`) can be slightly
+less efficient.
+
+The optional argument `minchunksize` can be used to specify the minimum size of a chunk,
+and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
+are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
+each chunk is at least `minchunksize` long.
 
 If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
 `enumerate(chunks(...))` can be used in conjuction with `@threads`.
@@ -68,7 +81,7 @@ julia> collect(chunks(x; n=3))
  2:3
  4:5
 
-julia> collect(chunks(x; n=3, split=:scatter))
+julia> collect(chunks(x; n=3, split=ScatterSplit()))
 3-element Vector{StepRange{Int64, Int64}}:
  -1:3:5
  0:3:3
@@ -90,20 +103,11 @@ is_chunkable(::Tuple) = true
 
 
 # Current chunks split types
-abstract type SplitterType end
-struct BatchSplitter <: SplitterType end
-struct ScatterSplitter <: SplitterType end
-#=
-If we export the types, we are making the interaface
+abstract type SplitStrategy end
+struct BatchSplit <: SplitStrategy end
+struct ScatterSplit <: SplitStrategy end
 
-chunks(1:7, BatchSplitter; n=3)
-
-and similar public. It might not be a bad idea, but the
-benefits seem marginal now.
-=#
-#export BatchSplitter, ScatterSplitter
-
-const split_types = (:batch, :scatter)
+const split_types = (:batch, :scatter, BatchSplit(), ScatterSplit())
 
 # User defined constraint
 abstract type Constraint end
@@ -111,7 +115,7 @@ struct FixedCount <: Constraint end
 struct FixedSize <: Constraint end
 
 # Structure that carries the chunks data
-struct Chunk{T,C<:Constraint,S<:SplitterType}
+struct Chunk{T,C<:Constraint,S<:SplitStrategy}
     itr::T
     n::Int
     size::Int
@@ -122,51 +126,62 @@ is_chunkable(::Chunk) = true
     # Try not to break the order of the type parameters. Chunk is
     # not part of the interface (currently), so its being used
     # by OhMyThreads, so we probably should make it documented
-    using ChunkSplitters: Chunk, FixedCount, BatchSplitter
-    @test Chunk{typeof(1:7), FixedCount, BatchSplitter}(1:7, 3, 0) ==
-        Chunk{UnitRange{Int64}, FixedCount, BatchSplitter}(1:7, 3, 0)
-    @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
+    using ChunkSplitters: Chunk, FixedCount, BatchSplit
+    @test Chunk{typeof(1:7), FixedCount, BatchSplit}(1:7, 3, 0) ==
+        Chunk{UnitRange{Int64}, FixedCount, BatchSplit}(1:7, 3, 0)
+    @test_throws TypeError Chunk{typeof(1:7), BatchSplit, FixedCount}(1:7, 3, 0)
 end
 
 # Constructor for the chunks
 function chunks(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Symbol=:batch
+    split::Union{Symbol, SplitStrategy}=BatchSplit(),
+    minchunksize::Union{Nothing,Integer}=nothing,
 )
-    if split == :batch
-        chunks(itr, BatchSplitter; n, size)
-    elseif split == :scatter
-        chunks(itr, ScatterSplitter; n, size)
+    if split isa BatchSplit || split == :batch
+        chunks(itr, BatchSplit; n, size, minchunksize)
+    elseif split isa ScatterSplit || split == :scatter
+        chunks(itr, ScatterSplit; n, size, minchunksize)
     else
         split_err()
     end
 end
 
-function chunks(itr, split::Type{<:SplitterType};
+_set_minchunksize(minchunksize::Nothing) = 1
+function _set_minchunksize(minchunksize::Integer)
+    minchunksize < 1 && throw(ArgumentError("minchunksize must be >= 1"))
+    return minchunksize
+end
+function _set_C_n_size(itr, n::Nothing, size::Integer, minchunksize)
+    !isnothing(minchunksize) && mutually_exclusive_err("size","minchunksize")
+    size < 1 && throw(ArgumentError("size must be >= 1"))
+    return FixedSize, 0, size
+end
+function _set_C_n_size(itr, n::Integer, size::Nothing, minchunksize)
+    n < 1 && throw(ArgumentError("n must be >= 1"))
+    mcs = _set_minchunksize(minchunksize)
+    nmax = min(length(itr) ÷ mcs, n)
+    FixedCount, nmax, 0
+end
+
+function chunks(itr, split::Type{<:SplitStrategy};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
+    minchunksize::Union{Nothing,Integer}=nothing,
 )
-    !isnothing(n) || !isnothing(size) || missing_input_err()
-    !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
-    if !isnothing(n)
-        C = FixedCount
-        n >= 1 || throw(ArgumentError("n must be >= 1"))
-    else
-        C = FixedSize
-        size >= 1 || throw(ArgumentError("size must be >= 1"))
-    end
-    n_input = isnothing(n) ? 0 : n
-    size_input = isnothing(size) ? 0 : size
     is_chunkable(itr) || not_chunkable_err(itr)
-    return Chunk{typeof(itr),C,split}(itr, min(length(itr), n_input), min(length(itr), size_input))
+    isnothing(n) && isnothing(size) && missing_input_err()
+    !isnothing(size) && !isnothing(n) && mutually_exclusive_err("size","n")
+    C, n, size = _set_C_n_size(itr, n, size, minchunksize)
+    return Chunk{typeof(itr),C,split}(itr, n, size)
 end
 
 function missing_input_err()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
 end
-function mutually_exclusive_err()
-    throw(ArgumentError("n and size are mutually exclusive."))
+function mutually_exclusive_err(var1,var2)
+    throw(ArgumentError("$var1 and $var2 are mutually exclusive."))
 end
 function not_chunkable_err(::T) where {T}
     throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or if it is compatible with the chunks minimal interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
@@ -175,8 +190,8 @@ end
 
 length(c::Chunk{T,FixedCount,S}) where {T,S} = c.n
 length(c::Chunk{T,FixedSize,S}) where {T,S} = cld(length(c.itr), max(1, c.size))
-eltype(::Chunk{T,C,BatchSplitter}) where {T,C} = UnitRange{Int}
-eltype(::Chunk{T,C,ScatterSplitter}) where {T,C} = StepRange{Int,Int}
+eltype(::Chunk{T,C,BatchSplit}) where {T,C} = UnitRange{Int}
+eltype(::Chunk{T,C,ScatterSplit}) where {T,C} = StepRange{Int,Int}
 
 firstindex(::Chunk) = 1
 lastindex(c::Chunk) = length(c)
@@ -221,8 +236,8 @@ function iterate(ec::Enumerate{<:Chunk}, state=nothing)
     end
     return nothing
 end
-eltype(::Enumerate{<:Chunk{T,C,BatchSplitter}}) where {T,C} = Tuple{Int,UnitRange{Int}}
-eltype(::Enumerate{<:Chunk{T,C,ScatterSplitter}}) where {T,C} = Tuple{Int,StepRange{Int,Int}}
+eltype(::Enumerate{<:Chunk{T,C,BatchSplit}}) where {T,C} = Tuple{Int,UnitRange{Int}}
+eltype(::Enumerate{<:Chunk{T,C,ScatterSplit}}) where {T,C} = Tuple{Int,StepRange{Int,Int}}
 
 # These methods are required for threading over enumerate(chunks(...))
 firstindex(::Enumerate{<:Chunk}) = 1
@@ -264,7 +279,7 @@ end
 # This is the lower level function that receives `ichunk` as a parameter
 #
 """
-    getchunk(itr, i::Integer; n::Union{Nothing,Integer}, size::Union{Nothing,Integer}[, split::Symbol=:batch])
+    getchunk(itr, i::Integer; n::Union{Nothing,Integer}, size::Union{Nothing,Integer}[, split::Union{Symbol, SplitStrategy}=ScatterSplit()])
 
 Returns the range of indices of `itr` that corresponds to the `i`-th chunk.
 How the chunks are formed depends on the keyword arguments. See `chunks` for more information.
@@ -272,7 +287,7 @@ How the chunks are formed depends on the keyword arguments. See `chunks` for mor
 ## Example
 
 If we have an array of 7 elements, and the work on the elements is divided
-into 3 chunks, we have (using the default `split = :batch` option):
+into 3 chunks, we have (using the default `split = BatchSplit()` option):
 
 ```jldoctest
 julia> using ChunkSplitters
@@ -289,20 +304,20 @@ julia> getchunk(x, 3; n=3)
 6:7
 ```
 
-And using `split = :scatter`, we have:
+And using `split = ScatterSplit()`, we have:
 
 ```jldoctest
 julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> getchunk(x, 1; n=3, split=:scatter)
+julia> getchunk(x, 1; n=3, split=ScatterSplit())
 1:3:7
 
-julia> getchunk(x, 2; n=3, split=:scatter)
+julia> getchunk(x, 2; n=3, split=ScatterSplit())
 2:3:5
 
-julia> getchunk(x, 3; n=3, split=:scatter)
+julia> getchunk(x, 3; n=3, split=ScatterSplit())
 3:3:6
 ```
 
@@ -328,21 +343,21 @@ julia> getchunk(x, 3; size=3)
 function getchunk(itr, ichunk::Integer;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Symbol=:batch
+    split::Union{Symbol, SplitStrategy}=BatchSplit()
 )
-    if split == :batch
-        getchunk(itr, ichunk, BatchSplitter; n=n, size=size)
-    elseif split == :scatter
-        getchunk(itr, ichunk, ScatterSplitter; n=n, size=size)
+    if split isa BatchSplit || split == :batch
+        getchunk(itr, ichunk, BatchSplit; n=n, size=size)
+    elseif split isa ScatterSplit || split == :scatter
+        getchunk(itr, ichunk, ScatterSplit; n=n, size=size)
     else
         split_err()
     end
 end
 
-_empty_itr(::Type{BatchSplitter}) = 0:-1
-_empty_itr(::Type{ScatterSplitter}) = 0:1:-1
+_empty_itr(::Type{BatchSplit}) = 0:-1
+_empty_itr(::Type{ScatterSplit}) = 0:1:-1
 
-function getchunk(itr, ichunk::Integer, split::Type{<:SplitterType};
+function getchunk(itr, ichunk::Integer, split::Type{<:SplitStrategy};
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
 )
@@ -372,7 +387,7 @@ getchunk(c::Chunk{T,FixedCount,S}, ichunk::Integer) where {T,S} =
 getchunk(c::Chunk{T,FixedSize,S}, ichunk::Integer) where {T,S} =
     getchunk(c.itr, ichunk, S; n=nothing, size=c.size)
 
-function _getchunk(::Type{FixedCount}, ::Type{BatchSplitter}, itr, ichunk; n, kwargs...)
+function _getchunk(::Type{FixedCount}, ::Type{BatchSplit}, itr, ichunk; n, kwargs...)
     l = length(itr)
     n_per_chunk, n_remaining = divrem(l, n)
     first = firstindex(itr) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
@@ -380,14 +395,14 @@ function _getchunk(::Type{FixedCount}, ::Type{BatchSplitter}, itr, ichunk; n, kw
     return first:last
 end
 
-function _getchunk(::Type{FixedCount}, ::Type{ScatterSplitter}, itr, ichunk; n, kwargs...)
+function _getchunk(::Type{FixedCount}, ::Type{ScatterSplit}, itr, ichunk; n, kwargs...)
     first = (firstindex(itr) - 1) + ichunk
     last = lastindex(itr)
     step = n
     return first:step:last
 end
 
-function _getchunk(::Type{FixedSize}, ::Type{BatchSplitter}, itr, ichunk; size, kwargs...)
+function _getchunk(::Type{FixedSize}, ::Type{BatchSplit}, itr, ichunk; size, kwargs...)
     first = firstindex(itr) + (ichunk - 1) * size
     # last = min((first - 1) + size, length(itr)) # unfortunately doesn't work for offset arrays :(
     d, r = divrem(length(itr), size)
@@ -396,8 +411,8 @@ function _getchunk(::Type{FixedSize}, ::Type{BatchSplitter}, itr, ichunk; size, 
     return first:last
 end
 
-function _getchunk(::Type{FixedSize}, ::Type{ScatterSplitter}, itr, ichunk; size, kwargs...)
-    throw(ArgumentError("split=:scatter not yet supported in combination with size keyword argument."))
+function _getchunk(::Type{FixedSize}, ::Type{ScatterSplit}, itr, ichunk; size, kwargs...)
+    throw(ArgumentError("split=ScatterSplit() not yet supported in combination with size keyword argument."))
 end
 
 #
@@ -455,26 +470,28 @@ end
     using ChunkSplitters: chunks
     using OffsetArrays: OffsetArray
     using ChunkSplitters.Testing: test_chunks, test_sum
-    @test test_chunks(; array_length=1, n=1, size=nothing, split=:scatter, result=[1:1])
-    @test test_chunks(; array_length=2, n=1, size=nothing, split=:scatter, result=[1:2])
-    @test test_chunks(; array_length=2, n=2, size=nothing, split=:scatter, result=[1:1, 2:2])
-    @test test_chunks(; array_length=3, n=2, size=nothing, split=:scatter, result=[1:2:3, 2:2:2])
-    @test test_chunks(; array_length=7, n=3, size=nothing, split=:scatter, result=[1:3:7, 2:3:5, 3:3:6])
-    @test test_chunks(; array_length=12, n=4, size=nothing, split=:scatter, result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
-    @test test_chunks(; array_length=15, n=4, size=nothing, split=:scatter, result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
-    @test test_sum(; array_length=1, n=1, size=nothing, split=:scatter)
-    @test test_sum(; array_length=2, n=1, size=nothing, split=:scatter)
-    @test test_sum(; array_length=2, n=2, size=nothing, split=:scatter)
-    @test test_sum(; array_length=3, n=2, size=nothing, split=:scatter)
-    @test test_sum(; array_length=7, n=3, size=nothing, split=:scatter)
-    @test test_sum(; array_length=12, n=4, size=nothing, split=:scatter)
-    @test test_sum(; array_length=15, n=4, size=nothing, split=:scatter)
-    @test test_sum(; array_length=117, n=4, size=nothing, split=:scatter)
-    x = OffsetArray(1:7, -1:5)
-    @test collect.(chunks(x; n=3, split=:scatter)) == [[-1, 2, 5], [0, 3], [1, 4]]
+    for split in (:scatter, ScatterSplit())
+        @test test_chunks(; array_length=1, n=1, size=nothing, split=split, result=[1:1])
+        @test test_chunks(; array_length=2, n=1, size=nothing, split=split, result=[1:2])
+        @test test_chunks(; array_length=2, n=2, size=nothing, split=split, result=[1:1, 2:2])
+        @test test_chunks(; array_length=3, n=2, size=nothing, split=split, result=[1:2:3, 2:2:2])
+        @test test_chunks(; array_length=7, n=3, size=nothing, split=split, result=[1:3:7, 2:3:5, 3:3:6])
+        @test test_chunks(; array_length=12, n=4, size=nothing, split=split, result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
+        @test test_chunks(; array_length=15, n=4, size=nothing, split=split, result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
+        @test test_sum(; array_length=1, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=3, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=7, n=3, size=nothing, split=split)
+        @test test_sum(; array_length=12, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=15, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=117, n=4, size=nothing, split=split)
+        x = OffsetArray(1:7, -1:5)
+        @test collect.(chunks(x; n=3, split=split)) == [[-1, 2, 5], [0, 3], [1, 4]]
 
-    # FixedSize
-    @test_throws ArgumentError collect(chunks(1:10; size=2, split=:scatter)) # not supported (yet?)
+        # FixedSize
+        @test_throws ArgumentError collect(chunks(1:10; size=2, split=split)) # not supported (yet?)
+    end
 end
 
 @testitem ":batch" begin
@@ -482,47 +499,49 @@ end
     using OffsetArrays: OffsetArray
     using ChunkSplitters.Testing: test_chunks, test_sum
     # FixedCount
-    @test test_chunks(; array_length=1, n=1, size=nothing, split=:batch, result=[1:1])
-    @test test_chunks(; array_length=2, n=1, size=nothing, split=:batch, result=[1:2])
-    @test test_chunks(; array_length=2, n=2, size=nothing, split=:batch, result=[1:1, 2:2])
-    @test test_chunks(; array_length=3, n=2, size=nothing, split=:batch, result=[1:2, 3:3])
-    @test test_chunks(; array_length=7, n=3, size=nothing, split=:batch, result=[1:3, 4:5, 6:7])
-    @test test_chunks(; array_length=12, n=4, size=nothing, split=:batch, result=[1:3, 4:6, 7:9, 10:12])
-    @test test_chunks(; array_length=15, n=4, size=nothing, split=:batch, result=[1:4, 5:8, 9:12, 13:15])
-    @test test_sum(; array_length=1, n=1, size=nothing, split=:batch)
-    @test test_sum(; array_length=2, n=1, size=nothing, split=:batch)
-    @test test_sum(; array_length=2, n=2, size=nothing, split=:batch)
-    @test test_sum(; array_length=3, n=2, size=nothing, split=:batch)
-    @test test_sum(; array_length=7, n=3, size=nothing, split=:batch)
-    @test test_sum(; array_length=12, n=4, size=nothing, split=:batch)
-    @test test_sum(; array_length=15, n=4, size=nothing, split=:batch)
-    @test test_sum(; array_length=117, n=4, size=nothing, split=:batch)
-    x = OffsetArray(1:7, -1:5)
-    @test collect.(chunks(x; n=3, split=:batch)) == [[-1, 0, 1], [2, 3], [4, 5]]
+    for split in (:batch, BatchSplit())
+        @test test_chunks(; array_length=1, n=1, size=nothing, split=split, result=[1:1])
+        @test test_chunks(; array_length=2, n=1, size=nothing, split=split, result=[1:2])
+        @test test_chunks(; array_length=2, n=2, size=nothing, split=split, result=[1:1, 2:2])
+        @test test_chunks(; array_length=3, n=2, size=nothing, split=split, result=[1:2, 3:3])
+        @test test_chunks(; array_length=7, n=3, size=nothing, split=split, result=[1:3, 4:5, 6:7])
+        @test test_chunks(; array_length=12, n=4, size=nothing, split=split, result=[1:3, 4:6, 7:9, 10:12])
+        @test test_chunks(; array_length=15, n=4, size=nothing, split=split, result=[1:4, 5:8, 9:12, 13:15])
+        @test test_sum(; array_length=1, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=1, size=nothing, split=split)
+        @test test_sum(; array_length=2, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=3, n=2, size=nothing, split=split)
+        @test test_sum(; array_length=7, n=3, size=nothing, split=split)
+        @test test_sum(; array_length=12, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=15, n=4, size=nothing, split=split)
+        @test test_sum(; array_length=117, n=4, size=nothing, split=split)
+        x = OffsetArray(1:7, -1:5)
+        @test collect.(chunks(x; n=3, split=split)) == [[-1, 0, 1], [2, 3], [4, 5]]
 
-    # FixedSize
-    @test test_chunks(; array_length=1, n=nothing, size=1, split=:batch, result=[1:1])
-    @test test_chunks(; array_length=2, n=nothing, size=2, split=:batch, result=[1:2])
-    @test test_chunks(; array_length=2, n=nothing, size=1, split=:batch, result=[1:1, 2:2])
-    @test test_chunks(; array_length=3, n=nothing, size=2, split=:batch, result=[1:2, 3:3])
-    @test test_chunks(; array_length=4, n=nothing, size=1, split=:batch, result=[1:1, 2:2, 3:3, 4:4])
-    @test test_chunks(; array_length=7, n=nothing, size=3, split=:batch, result=[1:3, 4:6, 7:7])
-    @test test_chunks(; array_length=7, n=nothing, size=4, split=:batch, result=[1:4, 5:7])
-    @test test_chunks(; array_length=7, n=nothing, size=5, split=:batch, result=[1:5, 6:7])
-    @test test_chunks(; array_length=12, n=nothing, size=3, split=:batch, result=[1:3, 4:6, 7:9, 10:12])
-    @test test_chunks(; array_length=15, n=nothing, size=4, split=:batch, result=[1:4, 5:8, 9:12, 13:15])
-    @test test_sum(; array_length=1, n=nothing, size=1, split=:batch)
-    @test test_sum(; array_length=2, n=nothing, size=2, split=:batch)
-    @test test_sum(; array_length=2, n=nothing, size=1, split=:batch)
-    @test test_sum(; array_length=3, n=nothing, size=2, split=:batch)
-    @test test_sum(; array_length=4, n=nothing, size=1, split=:batch)
-    @test test_sum(; array_length=7, n=nothing, size=3, split=:batch)
-    @test test_sum(; array_length=7, n=nothing, size=4, split=:batch)
-    @test test_sum(; array_length=7, n=nothing, size=5, split=:batch)
-    @test test_sum(; array_length=12, n=nothing, size=3, split=:batch)
-    @test test_sum(; array_length=15, n=nothing, size=4, split=:batch)
-    x = OffsetArray(1:7, -1:5)
-    @test collect.(chunks(x; n=nothing, size=3, split=:batch)) == [[-1, 0, 1], [2, 3, 4], [5]]
+        # FixedSize
+        @test test_chunks(; array_length=1, n=nothing, size=1, split=split, result=[1:1])
+        @test test_chunks(; array_length=2, n=nothing, size=2, split=split, result=[1:2])
+        @test test_chunks(; array_length=2, n=nothing, size=1, split=split, result=[1:1, 2:2])
+        @test test_chunks(; array_length=3, n=nothing, size=2, split=split, result=[1:2, 3:3])
+        @test test_chunks(; array_length=4, n=nothing, size=1, split=split, result=[1:1, 2:2, 3:3, 4:4])
+        @test test_chunks(; array_length=7, n=nothing, size=3, split=split, result=[1:3, 4:6, 7:7])
+        @test test_chunks(; array_length=7, n=nothing, size=4, split=split, result=[1:4, 5:7])
+        @test test_chunks(; array_length=7, n=nothing, size=5, split=split, result=[1:5, 6:7])
+        @test test_chunks(; array_length=12, n=nothing, size=3, split=split, result=[1:3, 4:6, 7:9, 10:12])
+        @test test_chunks(; array_length=15, n=nothing, size=4, split=split, result=[1:4, 5:8, 9:12, 13:15])
+        @test test_sum(; array_length=1, n=nothing, size=1, split=split)
+        @test test_sum(; array_length=2, n=nothing, size=2, split=split)
+        @test test_sum(; array_length=2, n=nothing, size=1, split=split)
+        @test test_sum(; array_length=3, n=nothing, size=2, split=split)
+        @test test_sum(; array_length=4, n=nothing, size=1, split=split)
+        @test test_sum(; array_length=7, n=nothing, size=3, split=split)
+        @test test_sum(; array_length=7, n=nothing, size=4, split=split)
+        @test test_sum(; array_length=7, n=nothing, size=5, split=split)
+        @test test_sum(; array_length=12, n=nothing, size=3, split=split)
+        @test test_sum(; array_length=15, n=nothing, size=4, split=split)
+        x = OffsetArray(1:7, -1:5)
+        @test collect.(chunks(x; n=nothing, size=3, split=split)) == [[-1, 0, 1], [2, 3, 4], [5]]
+    end
 end
 
 @testitem "indexing" begin
@@ -589,6 +608,11 @@ end
         local c = chunks(1:l; size=s)
         @test all(length(c[i]) == length(c[i+1]) for i in 1:length(c)-2) # only the last chunk may have different length
     end
+    @test collect(chunks(1:10; n=2, minchunksize=2)) == [1:5, 6:10]
+    @test collect(chunks(1:10; n=5, minchunksize=3)) == [1:4, 5:7, 8:10]
+    @test collect(chunks(1:11; n=10, minchunksize=3)) == [1:4, 5:8, 9:11]
+    @test_throws ArgumentError chunks(1:10; n=2, minchunksize=0)
+    @test_throws ArgumentError chunks(1:10; size=2, minchunksize=2)
 end
 
 @testitem "return type" begin
@@ -667,9 +691,9 @@ end
     @test collect(enumerate(chunks(x; n=3))) == [(1, 1:3), (2, 4:5), (3, 6:7)]
     @test eltype(enumerate(chunks(x; n=3))) == Tuple{Int64,UnitRange{Int}}
     @test typeof(first(chunks(x; n=3))) == UnitRange{Int}
-    @test collect(chunks(x; n=3, split=:scatter)) == [1:3:7, 2:3:5, 3:3:6]
-    @test collect(enumerate(chunks(x; n=3, split=:scatter))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
-    @test eltype(enumerate(chunks(x; n=3, split=:scatter))) == Tuple{Int64,StepRange{Int64,Int64}}
+    @test collect(chunks(x; n=3, split=ScatterSplit())) == [1:3:7, 2:3:5, 3:3:6]
+    @test collect(enumerate(chunks(x; n=3, split=ScatterSplit()))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
+    @test eltype(enumerate(chunks(x; n=3, split=ScatterSplit()))) == Tuple{Int64,StepRange{Int64,Int64}}
 end
 
 # Preserve legacy 2.0 interface (will be deprecated in 3.0)
