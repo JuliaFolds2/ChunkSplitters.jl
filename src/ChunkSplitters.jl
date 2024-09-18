@@ -137,8 +137,8 @@ is_chunkable(::Chunk) = true
     @test_throws TypeError Chunk{typeof(1:7), BatchSplitter, FixedCount}(1:7, 3, 0)
 end
 
-_chunks(itr, ::Val{:batch}; n, size, minchunksize) = chunks(itr, BatchSplitter; n, size, minchunksize)
-_chunks(itr, ::Val{:scatter}; n, size, minchunksize) = chunks(itr, ScatterSplitter; n, size, minchunksize)
+_chunks(itr, ::Val{:batch}, n, size, minchunksize) = chunks(itr, BatchSplitter; n, size, minchunksize)
+_chunks(itr, ::Val{:scatter}, n, size, minchunksize) = chunks(itr, ScatterSplitter; n, size, minchunksize)
 
 # Constructor for the chunks
 function chunks(itr;
@@ -148,7 +148,8 @@ function chunks(itr;
     minchunksize::Union{Nothing,Integer}=nothing,
 )
     split in (:batch, :scatter) || split_err()
-    return _chunks(itr, Val(split); n, size, minchunksize)
+    c = _chunks(itr, Val(split), n, size, minchunksize)
+    return c
 end
 
 _set_minchunksize(minchunksize::Nothing) = 1 
@@ -156,12 +157,12 @@ function _set_minchunksize(minchunksize::Integer)
     minchunksize < 1 && throw(ArgumentError("minchunksize must be >= 1"))
     return minchunksize
 end
-function _set_C_n_size(itr, n::Nothing, size, minchunksize)
+function _set_C_n_size(itr, n::Nothing, size::Integer, minchunksize)
     !isnothing(minchunksize) && mutually_exclusive_err("size","minchunksize")
     size < 1 && throw(ArgumentError("size must be >= 1"))
     return FixedSize, 0, size
 end
-function _set_C_n_size(itr, n, size::Nothing, minchunksize)
+function _set_C_n_size(itr, n::Integer, size::Nothing, minchunksize)
     n < 1 && throw(ArgumentError("n must be >= 1"))
     mcs = _set_minchunksize(minchunksize)
     nmax = min(length(itr) ÷ mcs, n)
