@@ -13,7 +13,7 @@ end
     chunks(itr; 
         n::Union{Nothing, Integer}, size::Union{Nothing, Integer} 
         [, split::Symbol=:batch]
-        [, minchunksize::Integer=1]
+        [, minchunksize::Union{Nothing,Integer}]
     )
 
 Returns an iterator that splits the *indices* of `itr` into
