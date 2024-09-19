@@ -1,6 +1,6 @@
 module Internals
 
-using ChunkSplitters: SplitStrategy, BatchSplit, ScatterSplit
+using ChunkSplitters: Split, ConsecutiveSplit, RoundRobinSplit
 import ChunkSplitters: chunk_indices, chunk, is_chunkable
 import Base: iterate, length, eltype, enumerate, firstindex, lastindex, getindex, eachindex
 
@@ -12,13 +12,13 @@ abstract type ReturnType end
 struct ReturnIndices <: ReturnType end
 struct ReturnViews <: ReturnType end
 
-struct ChunksIterator{T,C<:Constraint,S<:SplitStrategy,R<:ReturnType}
+struct ChunksIterator{T,C<:Constraint,S<:Split,R<:ReturnType}
     collection::T
     n::Int
     size::Int
 end
 
-function ChunksIterator(s::SplitStrategy, r::ReturnType; collection, n=nothing, size=nothing, minchunksize=nothing)
+function ChunksIterator(s::Split, r::ReturnType; collection, n=nothing, size=nothing, minchunksize=nothing)
     is_chunkable(collection) || err_not_chunkable(collection)
     isnothing(n) && isnothing(size) && err_missing_input()
     !isnothing(size) && !isnothing(n) && err_mutually_exclusive("size", "n")
@@ -30,7 +30,7 @@ end
 function chunk_indices(collection;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::SplitStrategy=BatchSplit(),
+    split::Split=ConsecutiveSplit(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
     return ChunksIterator(split, ReturnIndices(); collection, n, size, minchunksize)
@@ -40,7 +40,7 @@ end
 function chunk(collection;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::SplitStrategy=BatchSplit(),
+    split::Split=ConsecutiveSplit(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
     return ChunksIterator(split, ReturnViews(); collection, n, size, minchunksize)
@@ -89,10 +89,10 @@ length(c::ChunksIterator{T,FixedSize,S}) where {T,S} = cld(length(c.collection),
 getindex(c::ChunksIterator{T,C,S,ReturnIndices}, i::Int) where {T,C,S} = getchunkindices(c, i)
 getindex(c::ChunksIterator{T,C,S,ReturnViews}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
 
-eltype(::ChunksIterator{T,C,BatchSplit,ReturnIndices}) where {T,C} = UnitRange{Int}
-eltype(::ChunksIterator{T,C,ScatterSplit,ReturnIndices}) where {T,C} = StepRange{Int,Int}
-eltype(c::ChunksIterator{T,C,BatchSplit,ReturnViews}) where {T,C} = typeof(c[firstindex(c)])
-eltype(c::ChunksIterator{T,C,ScatterSplit,ReturnViews}) where {T,C} = typeof(c[firstindex(c)])
+eltype(::ChunksIterator{T,C,ConsecutiveSplit,ReturnIndices}) where {T,C} = UnitRange{Int}
+eltype(::ChunksIterator{T,C,RoundRobinSplit,ReturnIndices}) where {T,C} = StepRange{Int,Int}
+eltype(c::ChunksIterator{T,C,ConsecutiveSplit,ReturnViews}) where {T,C} = typeof(c[firstindex(c)])
+eltype(c::ChunksIterator{T,C,RoundRobinSplit,ReturnViews}) where {T,C} = typeof(c[firstindex(c)])
 
 function iterate(c::ChunksIterator{T,C,S,R}, state=nothing) where {T,C,S,R}
     length(c.collection) == 0 && return nothing
@@ -129,8 +129,8 @@ function iterate(ec::Enumerate{<:ChunksIterator}, state=nothing)
     return nothing
 end
 
-eltype(ec::Enumerate{<:ChunksIterator{T,C,BatchSplit}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
-eltype(ec::Enumerate{<:ChunksIterator{T,C,ScatterSplit}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
+eltype(ec::Enumerate{<:ChunksIterator{T,C,ConsecutiveSplit}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
+eltype(ec::Enumerate{<:ChunksIterator{T,C,RoundRobinSplit}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
 
 firstindex(::Enumerate{<:ChunksIterator}) = 1
 
@@ -142,8 +142,8 @@ length(ec::Enumerate{<:ChunksIterator}) = length(ec.itr)
 
 eachindex(ec::Enumerate{<:ChunksIterator}) = Base.OneTo(length(ec.itr))
 
-_empty_itr(::Type{BatchSplit}) = 0:-1
-_empty_itr(::Type{ScatterSplit}) = 0:1:-1
+_empty_itr(::Type{ConsecutiveSplit}) = 0:-1
+_empty_itr(::Type{RoundRobinSplit}) = 0:1:-1
 
 """
     getchunkindices(c::ChunksIterator, i::Integer)
@@ -169,7 +169,7 @@ function getchunkindices(c::ChunksIterator{T,C,S}, ichunk::Integer) where {T,C,S
     return _getchunkindices(C, S, c.collection, ichunk; n, size)
 end
 
-function _getchunkindices(::Type{FixedCount}, ::Type{BatchSplit}, collection, ichunk; n, kwargs...)
+function _getchunkindices(::Type{FixedCount}, ::Type{ConsecutiveSplit}, collection, ichunk; n, kwargs...)
     l = length(collection)
     n_per_chunk, n_remaining = divrem(l, n)
     first = firstindex(collection) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
@@ -177,14 +177,14 @@ function _getchunkindices(::Type{FixedCount}, ::Type{BatchSplit}, collection, ic
     return first:last
 end
 
-function _getchunkindices(::Type{FixedCount}, ::Type{ScatterSplit}, collection, ichunk; n, kwargs...)
+function _getchunkindices(::Type{FixedCount}, ::Type{RoundRobinSplit}, collection, ichunk; n, kwargs...)
     first = (firstindex(collection) - 1) + ichunk
     last = lastindex(collection)
     step = n
     return first:step:last
 end
 
-function _getchunkindices(::Type{FixedSize}, ::Type{BatchSplit}, collection, ichunk; size, kwargs...)
+function _getchunkindices(::Type{FixedSize}, ::Type{ConsecutiveSplit}, collection, ichunk; size, kwargs...)
     first = firstindex(collection) + (ichunk - 1) * size
     # last = min((first - 1) + size, length(collection)) # unfortunately doesn't work for offset arrays :(
     d, r = divrem(length(collection), size)
@@ -193,8 +193,8 @@ function _getchunkindices(::Type{FixedSize}, ::Type{BatchSplit}, collection, ich
     return first:last
 end
 
-function _getchunkindices(::Type{FixedSize}, ::Type{ScatterSplit}, collection, ichunk; size, kwargs...)
-    throw(ArgumentError("split=ScatterSplit() not yet supported in combination with size keyword argument."))
+function _getchunkindices(::Type{FixedSize}, ::Type{RoundRobinSplit}, collection, ichunk; size, kwargs...)
+    throw(ArgumentError("split=RoundRobinSplit() not yet supported in combination with size keyword argument."))
 end
 
 end # module
