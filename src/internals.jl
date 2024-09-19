@@ -21,7 +21,7 @@ end
 function chunk_indices(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Union{Symbol,SplitStrategy}=BatchSplit(),
+    split::SplitStrategy=BatchSplit(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
     is_chunkable(itr) || not_chunkable_err(itr)
@@ -29,9 +29,9 @@ function chunk_indices(itr;
     !isnothing(size) && !isnothing(n) && mutually_exclusive_err("size", "n")
     C, n, size = _set_C_n_size(itr, n, size, minchunksize)
 
-    if split isa BatchSplit || split == :batch
+    if split isa BatchSplit
         return ChunksIterator{typeof(itr),C,BatchSplit,ReturnIndices}(itr, n, size)
-    elseif split isa ScatterSplit || split == :scatter
+    elseif split isa ScatterSplit
         return ChunksIterator{typeof(itr),C,ScatterSplit,ReturnIndices}(itr, n, size)
     else
         split_err()
@@ -41,7 +41,7 @@ end
 function chunk(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Union{Symbol,SplitStrategy}=BatchSplit(),
+    split::SplitStrategy=BatchSplit(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
     is_chunkable(itr) || not_chunkable_err(itr)
@@ -49,9 +49,9 @@ function chunk(itr;
     !isnothing(size) && !isnothing(n) && mutually_exclusive_err("size", "n")
     C, n, size = _set_C_n_size(itr, n, size, minchunksize)
 
-    if split isa BatchSplit || split == :batch
+    if split isa BatchSplit
         return ChunksIterator{typeof(itr),C,BatchSplit,ReturnViews}(itr, n, size)
-    elseif split isa ScatterSplit || split == :scatter
+    elseif split isa ScatterSplit
         return ChunksIterator{typeof(itr),C,ScatterSplit,ReturnViews}(itr, n, size)
     else
         split_err()
@@ -157,7 +157,7 @@ length(ec::Enumerate{<:ChunksIterator}) = length(ec.itr)
 eachindex(ec::Enumerate{<:ChunksIterator}) = Base.OneTo(length(ec.itr))
 
 """
-    getchunk(itr, i::Integer; n::Union{Nothing,Integer}, size::Union{Nothing,Integer}[, split::Union{Symbol, SplitStrategy}=ScatterSplit()])
+    getchunk(itr, i::Integer; n::Union{Nothing,Integer}, size::Union{Nothing,Integer}[, split::SplitStrategy=BatchSplit()])
 
 Returns the range of indices of `itr` that corresponds to the `i`-th chunk.
 How the chunks are formed depends on the keyword arguments. See `chunk_indices` for more information.
@@ -165,11 +165,11 @@ How the chunks are formed depends on the keyword arguments. See `chunk_indices` 
 function getchunk(itr, ichunk::Integer;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
-    split::Union{Symbol,SplitStrategy}=BatchSplit()
+    split::SplitStrategy=BatchSplit()
 )
-    if split isa BatchSplit || split == :batch
+    if split isa BatchSplit
         getchunk(itr, ichunk, BatchSplit; n=n, size=size)
-    elseif split isa ScatterSplit || split == :scatter
+    elseif split isa ScatterSplit
         getchunk(itr, ichunk, ScatterSplit; n=n, size=size)
     else
         split_err()
