@@ -98,8 +98,8 @@ lastindex(c::ChunksIterator) = length(c)
 length(c::ChunksIterator{T,FixedCount,S}) where {T,S} = c.n
 length(c::ChunksIterator{T,FixedSize,S}) where {T,S} = cld(length(c.itr), max(1, c.size))
 
-getindex(c::ChunksIterator{T,C,S,ReturnIndices}, i::Int) where {T,C,S} = getchunk(c, i)
-getindex(c::ChunksIterator{T,C,S,ReturnViews}, i::Int) where {T,C,S} = @view(c.itr[getchunk(c, i)])
+getindex(c::ChunksIterator{T,C,S,ReturnIndices}, i::Int) where {T,C,S} = getchunkindices(c, i)
+getindex(c::ChunksIterator{T,C,S,ReturnViews}, i::Int) where {T,C,S} = @view(c.itr[getchunkindices(c, i)])
 
 eltype(::ChunksIterator{T,C,BatchSplit,ReturnIndices}) where {T,C} = UnitRange{Int}
 eltype(::ChunksIterator{T,C,ScatterSplit,ReturnIndices}) where {T,C} = StepRange{Int,Int}
@@ -118,13 +118,11 @@ function iterate(c::ChunksIterator{T,C,S,R}, state=nothing) where {T,C,S,R}
     return nothing
 end
 
-#
-# Iteration over chunks enumeration: usually enumerate is not compatible
-# with `@threads`, because of the lack of the general definition of
+# Usually enumerate is not compatible
+# with `@threads` and co, because of the lack of the general definition of
 # `firstindex`, `lastindex`, and `getindex` for `Base.Iterators.Enumerate{<:Any}`. Thus,
 # to avoid using the internal `.itr` property of `Enumerate`, we redefine
 # the `iterate` method for `ChunkSplitters.Enumerate{<:ChunksIterator}`.
-#
 struct Enumerate{I<:ChunksIterator}
     itr::I
 end
@@ -156,60 +154,34 @@ length(ec::Enumerate{<:ChunksIterator}) = length(ec.itr)
 
 eachindex(ec::Enumerate{<:ChunksIterator}) = Base.OneTo(length(ec.itr))
 
+# _empty_itr(::Type{BatchSplit}) = 0:-1
+# _empty_itr(::Type{ScatterSplit}) = 0:1:-1
+
 """
-    getchunk(itr, i::Integer; n::Union{Nothing,Integer}, size::Union{Nothing,Integer}[, split::SplitStrategy=BatchSplit()])
+    getchunkindices(c::ChunksIterator, i::Integer)
 
 Returns the range of indices of `itr` that corresponds to the `i`-th chunk.
-How the chunks are formed depends on the keyword arguments. See `chunk_indices` for more information.
 """
-function getchunk(itr, ichunk::Integer;
-    n::Union{Nothing,Integer}=nothing,
-    size::Union{Nothing,Integer}=nothing,
-    split::SplitStrategy=BatchSplit()
-)
-    if split isa BatchSplit
-        getchunk(itr, ichunk, BatchSplit; n=n, size=size)
-    elseif split isa ScatterSplit
-        getchunk(itr, ichunk, ScatterSplit; n=n, size=size)
-    else
-        split_err()
-    end
-end
-
-_empty_itr(::Type{BatchSplit}) = 0:-1
-_empty_itr(::Type{ScatterSplit}) = 0:1:-1
-
-function getchunk(itr, ichunk::Integer, split::Type{<:SplitStrategy};
-    n::Union{Nothing,Integer}=nothing,
-    size::Union{Nothing,Integer}=nothing,
-)
-    length(itr) == 0 && return _empty_itr(split)
-    !isnothing(n) || !isnothing(size) || missing_input_err()
-    !isnothing(n) && !isnothing(size) && mutually_exclusive_err()
-    if !isnothing(n)
-        C = FixedCount
+function getchunkindices(c::ChunksIterator{T,C,S}, ichunk::Integer) where {T,C,S}
+    # length(c.itr) == 0 && return _empty_itr(S)
+    ichunk <= length(c.itr) || throw(ArgumentError("ichunk must be less or equal to the length of the ChunksIterator"))
+    if C == FixedCount
+        n = c.n
+        size = nothing
         n >= 1 || throw(ArgumentError("n must be >= 1"))
-    else
-        C = FixedSize
+    elseif C == FixedSize
+        n = nothing
+        size = c.size
         size >= 1 || throw(ArgumentError("size must be >= 1"))
-        l = length(itr)
-        size = min(l, size) # handle size>length(itr)
+        l = length(c.itr)
+        size = min(l, size) # handle size>length(c.itr)
         n = cld(l, size)
     end
-    n_input = isnothing(n) ? 0 : n
-    ichunk <= n_input || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
-    ichunk <= length(itr) || throw(ArgumentError("ichunk must be less or equal to the length of `itr`"))
-    is_chunkable(itr) || not_chunkable_err(itr)
-    return _getchunk(C, split, itr, ichunk; n, size)
+    ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
+    return _getchunkindices(C, S, c.itr, ichunk; n, size)
 end
 
-# convenient pass-forward methods
-getchunk(c::ChunksIterator{T,FixedCount,S}, ichunk::Integer) where {T,S} =
-    getchunk(c.itr, ichunk, S; n=c.n, size=nothing)
-getchunk(c::ChunksIterator{T,FixedSize,S}, ichunk::Integer) where {T,S} =
-    getchunk(c.itr, ichunk, S; n=nothing, size=c.size)
-
-function _getchunk(::Type{FixedCount}, ::Type{BatchSplit}, itr, ichunk; n, kwargs...)
+function _getchunkindices(::Type{FixedCount}, ::Type{BatchSplit}, itr, ichunk; n, kwargs...)
     l = length(itr)
     n_per_chunk, n_remaining = divrem(l, n)
     first = firstindex(itr) + (ichunk - 1) * n_per_chunk + ifelse(ichunk <= n_remaining, ichunk - 1, n_remaining)
@@ -217,14 +189,14 @@ function _getchunk(::Type{FixedCount}, ::Type{BatchSplit}, itr, ichunk; n, kwarg
     return first:last
 end
 
-function _getchunk(::Type{FixedCount}, ::Type{ScatterSplit}, itr, ichunk; n, kwargs...)
+function _getchunkindices(::Type{FixedCount}, ::Type{ScatterSplit}, itr, ichunk; n, kwargs...)
     first = (firstindex(itr) - 1) + ichunk
     last = lastindex(itr)
     step = n
     return first:step:last
 end
 
-function _getchunk(::Type{FixedSize}, ::Type{BatchSplit}, itr, ichunk; size, kwargs...)
+function _getchunkindices(::Type{FixedSize}, ::Type{BatchSplit}, itr, ichunk; size, kwargs...)
     first = firstindex(itr) + (ichunk - 1) * size
     # last = min((first - 1) + size, length(itr)) # unfortunately doesn't work for offset arrays :(
     d, r = divrem(length(itr), size)
@@ -233,7 +205,7 @@ function _getchunk(::Type{FixedSize}, ::Type{BatchSplit}, itr, ichunk; size, kwa
     return first:last
 end
 
-function _getchunk(::Type{FixedSize}, ::Type{ScatterSplit}, itr, ichunk; size, kwargs...)
+function _getchunkindices(::Type{FixedSize}, ::Type{ScatterSplit}, itr, ichunk; size, kwargs...)
     throw(ArgumentError("split=ScatterSplit() not yet supported in combination with size keyword argument."))
 end
 

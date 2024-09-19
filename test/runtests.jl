@@ -4,8 +4,6 @@ using TestItems: @testitem, @testsnippet
 @run_package_tests
 
 @testsnippet Testing begin
-    using ChunkSplitters.Internals: getchunk
-
     function test_chunk_indices(; array_length, n, size, split, result)
         if n === nothing
             d, r = divrem(array_length, size)
@@ -15,7 +13,8 @@ using TestItems: @testitem, @testsnippet
         else
             throw(ArgumentError("both n and size === nothing"))
         end
-        ranges = collect(getchunk(rand(Int, array_length), i; n=n, size=size, split=split) for i in 1:nchunks)
+        c = chunk_indices(rand(Int, array_length); n=n, size=size, split=split)
+        ranges = [c[i] for i in 1:nchunks]
         all(ranges .== result)
     end
 
@@ -316,38 +315,38 @@ end
 end
 
 # @testitem "return type" begin
-#     using ChunkSplitters: chunk_indices, getchunk
+#     using ChunkSplitters: chunk_indices, getchunkindices
 #     using BenchmarkTools: @benchmark
-#     @test typeof(getchunk(1:10, 1; n=2, split=:batch)) == UnitRange{Int}
-#     @test typeof(getchunk(1:10, 1; size=2, split=:batch)) == UnitRange{Int}
-#     @test typeof(getchunk(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
+#     @test typeof(getchunkindices(1:10, 1; n=2, split=:batch)) == UnitRange{Int}
+#     @test typeof(getchunkindices(1:10, 1; size=2, split=:batch)) == UnitRange{Int}
+#     @test typeof(getchunkindices(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
 #     function mwe(ichunk=2, n=5, l=10)
 #         xs = collect(1:l)
 #         ys = collect(1:l)
-#         cx = getchunk(xs, ichunk; n=n, split=:batch)
-#         cy = getchunk(ys, ichunk; n=n, split=:batch)
+#         cx = getchunkindices(xs, ichunk; n=n, split=:batch)
+#         cy = getchunkindices(ys, ichunk; n=n, split=:batch)
 #         return Iterators.zip(cx, cy)
 #     end
 #     function mwe_size(ichunk=2, size=2, l=10)
 #         xs = collect(1:l)
 #         ys = collect(1:l)
-#         cx = getchunk(xs, ichunk; size=size, split=:batch)
-#         cy = getchunk(ys, ichunk; size=size, split=:batch)
+#         cx = getchunkindices(xs, ichunk; size=size, split=:batch)
+#         cy = getchunkindices(ys, ichunk; size=size, split=:batch)
 #         return Iterators.zip(cx, cy)
 #     end
 #     @test zip(3:4, 3:4) == @inferred mwe()
 #     @test zip(3:4, 3:4) == @inferred mwe_size()
-#     @test_throws ArgumentError getchunk(1:10, 1; n=2, split=:error)
+#     @test_throws ArgumentError getchunkindices(1:10, 1; n=2, split=:error)
 #     x = rand(10)
 #     @test typeof(first(chunk_indices(x; n=5))) == UnitRange{Int}
 #     @test eltype(chunk_indices(x; n=5)) == UnitRange{Int}
 #     @test typeof(first(chunk_indices(x; size=2))) == UnitRange{Int}
 #     @test eltype(chunk_indices(x; n=2)) == UnitRange{Int}
 #     # Empty iterator
-#     @test getchunk(10:9, 1; n=2) === 0:-1
-#     @test getchunk(10:9, 1; size=2) === 0:-1
-#     @test getchunk(10:9, 1; n=2, split=:scatter) === 0:1:-1
-#     @test getchunk(10:9, 1; size=2, split=:scatter) === 0:1:-1
+#     @test getchunkindices(10:9, 1; n=2) === 0:-1
+#     @test getchunkindices(10:9, 1; size=2) === 0:-1
+#     @test getchunkindices(10:9, 1; n=2, split=:scatter) === 0:1:-1
+#     @test getchunkindices(10:9, 1; size=2, split=:scatter) === 0:1:-1
 #     @test collect(chunk_indices(10:9; n=2)) == Vector{UnitRange{Int}}()
 #     @test collect(chunk_indices(10:9; size=2)) == Vector{UnitRange{Int}}()
 #     @test collect(enumerate(chunk_indices(10:9; n=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
