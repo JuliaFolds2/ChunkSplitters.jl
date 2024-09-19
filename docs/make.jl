@@ -1,14 +1,15 @@
-import Pkg
-Pkg.add("Documenter")
 using Documenter
 using ChunkSplitters
-push!(LOAD_PATH,"../src/")
+
 makedocs(
     modules=[ChunkSplitters],
+    checkdocs = :exports,
     sitename="ChunkSplitters.jl",
     pages = [
         "Home" => "index.md",
-        "Load balancing" => "load_balancing.md",
+        "Getting started" => "gettingstarted.md",
+        "Multithreading" => "multithreading.md",
+        "Minimal interface" => "minimalinterface.md",
         "References" => "references.md",
     ]
 )

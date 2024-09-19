@@ -29,9 +29,9 @@ This can be useful in many areas, one of which is multithreading:
 
 ```julia
 using ChunkSplitters: chunk
-using Base.Threads: nthreads, @spawn, @threads
+using Base.Threads: nthreads, @spawn
 
-x = rand(10^5);
+x = rand(10^8);
 
 function parallel_sum(x; ntasks=nthreads())
     tasks = map(chunk(x; n=ntasks)) do chunk_of_x

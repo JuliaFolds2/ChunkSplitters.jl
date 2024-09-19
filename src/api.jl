@@ -104,7 +104,7 @@ If you need a running chunk index you can combine `chunks` with `enumerate`. In 
 
 ### Requirements
 
-On top of the requirements for `chunk_indices` (see docstring), the type of the input
+In addition to the requirements for `chunk_indices` (see docstring), the type of the input
 `collection` must have an implementation of `view`, especially
 `view(::typeof(collection), ::UnitRange)` and `view(::typeof(collection), ::StepRange)`.
 Out of the box, `AbstractArray`s and `Tuple`s are supported.
