@@ -5,9 +5,47 @@
 
 # ChunkSplitters.jl
 
-[ChunkSplitters.jl](https://github.com/JuliaFolds2/ChunkSplitters.jl) facilitates the splitting of a given list of work items (of potentially uneven workload) into chunks that can be readily used for parallel processing. Operations on these chunks can, for example, be parallelized with Julia's multithreading tools, where separate tasks are created for each chunk. Compared to naive parallelization, ChunkSplitters.jl therefore effectively allows for more fine-grained control of the composition and workload of each parallel task.
+[ChunkSplitters.jl](https://github.com/JuliaFolds2/ChunkSplitters.jl) makes it easy to split the elements or indexes of a collection into chunks:
 
-Working with chunks and their respective indices also improves thread-safety compared to a naive approach based on `threadid()` indexing (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
+```julia-repl
+julia> using ChunkSplitters
+
+julia> x = [1.2, 3.4, 5.6, 7.8, 9.0];
+
+julia> collect(chunk(x; n=3))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
+ [1.2, 3.4]
+ [5.6, 7.8]
+ [9.0]
+
+julia> collect(chunk_indices(x; n=3))
+3-element Vector{UnitRange{Int64}}:
+ 1:2
+ 3:4
+ 5:5
+```
+
+This can be useful in many areas, one of which is multithreading:
+
+```julia
+using ChunkSplitters: chunk
+using Base.Threads: nthreads, @spawn, @threads
+
+x = rand(10^5);
+
+function parallel_sum(x; ntasks=nthreads())
+    tasks = map(chunk(x; n=ntasks)) do chunk_of_x
+        @spawn sum(chunk_of_x)
+    end
+    return sum(fetch, tasks)
+end
+
+parallel_sum(x) ≈ sum(x) # true
+```
+
+Here, we spawn a task per chunk, each computing a partial sum. Note that for `ntasks < nthreads()` this allows us to effectively control the number of utilised Julia threads.
+
+Working with chunks and their respective indices also improves thread-safety compared to a naive parallelisation approach based on `threadid()` (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
 
 ## Installation
 
