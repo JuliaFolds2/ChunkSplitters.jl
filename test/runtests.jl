@@ -61,74 +61,74 @@ end
 #     doctest(ChunkSplitters)
 # end
 
-@testitem "ConsecutiveSplit" setup = [Testing] begin
+@testitem "BatchSplit" setup = [Testing] begin
     using OffsetArrays: OffsetArray
     # FixedCount
-    @test test_chunk_indices(; array_length=1, n=1, size=nothing, split=ConsecutiveSplit(), result=[1:1])
-    @test test_chunk_indices(; array_length=2, n=1, size=nothing, split=ConsecutiveSplit(), result=[1:2])
-    @test test_chunk_indices(; array_length=2, n=2, size=nothing, split=ConsecutiveSplit(), result=[1:1, 2:2])
-    @test test_chunk_indices(; array_length=3, n=2, size=nothing, split=ConsecutiveSplit(), result=[1:2, 3:3])
-    @test test_chunk_indices(; array_length=7, n=3, size=nothing, split=ConsecutiveSplit(), result=[1:3, 4:5, 6:7])
-    @test test_chunk_indices(; array_length=12, n=4, size=nothing, split=ConsecutiveSplit(), result=[1:3, 4:6, 7:9, 10:12])
-    @test test_chunk_indices(; array_length=15, n=4, size=nothing, split=ConsecutiveSplit(), result=[1:4, 5:8, 9:12, 13:15])
-    @test test_sum(; array_length=1, n=1, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=2, n=1, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=2, n=2, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=3, n=2, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=7, n=3, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=12, n=4, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=15, n=4, size=nothing, split=ConsecutiveSplit())
-    @test test_sum(; array_length=117, n=4, size=nothing, split=ConsecutiveSplit())
+    @test test_chunk_indices(; array_length=1, n=1, size=nothing, split=BatchSplit(), result=[1:1])
+    @test test_chunk_indices(; array_length=2, n=1, size=nothing, split=BatchSplit(), result=[1:2])
+    @test test_chunk_indices(; array_length=2, n=2, size=nothing, split=BatchSplit(), result=[1:1, 2:2])
+    @test test_chunk_indices(; array_length=3, n=2, size=nothing, split=BatchSplit(), result=[1:2, 3:3])
+    @test test_chunk_indices(; array_length=7, n=3, size=nothing, split=BatchSplit(), result=[1:3, 4:5, 6:7])
+    @test test_chunk_indices(; array_length=12, n=4, size=nothing, split=BatchSplit(), result=[1:3, 4:6, 7:9, 10:12])
+    @test test_chunk_indices(; array_length=15, n=4, size=nothing, split=BatchSplit(), result=[1:4, 5:8, 9:12, 13:15])
+    @test test_sum(; array_length=1, n=1, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=2, n=1, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=2, n=2, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=3, n=2, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=7, n=3, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=12, n=4, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=15, n=4, size=nothing, split=BatchSplit())
+    @test test_sum(; array_length=117, n=4, size=nothing, split=BatchSplit())
     x = OffsetArray(1:7, -1:5)
-    @test collect.(chunk_indices(x; n=3, split=ConsecutiveSplit())) == [[-1, 0, 1], [2, 3], [4, 5]]
+    @test collect.(chunk_indices(x; n=3, split=BatchSplit())) == [[-1, 0, 1], [2, 3], [4, 5]]
 
     # FixedSize
-    @test test_chunk_indices(; array_length=1, n=nothing, size=1, split=ConsecutiveSplit(), result=[1:1])
-    @test test_chunk_indices(; array_length=2, n=nothing, size=2, split=ConsecutiveSplit(), result=[1:2])
-    @test test_chunk_indices(; array_length=2, n=nothing, size=1, split=ConsecutiveSplit(), result=[1:1, 2:2])
-    @test test_chunk_indices(; array_length=3, n=nothing, size=2, split=ConsecutiveSplit(), result=[1:2, 3:3])
-    @test test_chunk_indices(; array_length=4, n=nothing, size=1, split=ConsecutiveSplit(), result=[1:1, 2:2, 3:3, 4:4])
-    @test test_chunk_indices(; array_length=7, n=nothing, size=3, split=ConsecutiveSplit(), result=[1:3, 4:6, 7:7])
-    @test test_chunk_indices(; array_length=7, n=nothing, size=4, split=ConsecutiveSplit(), result=[1:4, 5:7])
-    @test test_chunk_indices(; array_length=7, n=nothing, size=5, split=ConsecutiveSplit(), result=[1:5, 6:7])
-    @test test_chunk_indices(; array_length=12, n=nothing, size=3, split=ConsecutiveSplit(), result=[1:3, 4:6, 7:9, 10:12])
-    @test test_chunk_indices(; array_length=15, n=nothing, size=4, split=ConsecutiveSplit(), result=[1:4, 5:8, 9:12, 13:15])
-    @test test_sum(; array_length=1, n=nothing, size=1, split=ConsecutiveSplit())
-    @test test_sum(; array_length=2, n=nothing, size=2, split=ConsecutiveSplit())
-    @test test_sum(; array_length=2, n=nothing, size=1, split=ConsecutiveSplit())
-    @test test_sum(; array_length=3, n=nothing, size=2, split=ConsecutiveSplit())
-    @test test_sum(; array_length=4, n=nothing, size=1, split=ConsecutiveSplit())
-    @test test_sum(; array_length=7, n=nothing, size=3, split=ConsecutiveSplit())
-    @test test_sum(; array_length=7, n=nothing, size=4, split=ConsecutiveSplit())
-    @test test_sum(; array_length=7, n=nothing, size=5, split=ConsecutiveSplit())
-    @test test_sum(; array_length=12, n=nothing, size=3, split=ConsecutiveSplit())
-    @test test_sum(; array_length=15, n=nothing, size=4, split=ConsecutiveSplit())
+    @test test_chunk_indices(; array_length=1, n=nothing, size=1, split=BatchSplit(), result=[1:1])
+    @test test_chunk_indices(; array_length=2, n=nothing, size=2, split=BatchSplit(), result=[1:2])
+    @test test_chunk_indices(; array_length=2, n=nothing, size=1, split=BatchSplit(), result=[1:1, 2:2])
+    @test test_chunk_indices(; array_length=3, n=nothing, size=2, split=BatchSplit(), result=[1:2, 3:3])
+    @test test_chunk_indices(; array_length=4, n=nothing, size=1, split=BatchSplit(), result=[1:1, 2:2, 3:3, 4:4])
+    @test test_chunk_indices(; array_length=7, n=nothing, size=3, split=BatchSplit(), result=[1:3, 4:6, 7:7])
+    @test test_chunk_indices(; array_length=7, n=nothing, size=4, split=BatchSplit(), result=[1:4, 5:7])
+    @test test_chunk_indices(; array_length=7, n=nothing, size=5, split=BatchSplit(), result=[1:5, 6:7])
+    @test test_chunk_indices(; array_length=12, n=nothing, size=3, split=BatchSplit(), result=[1:3, 4:6, 7:9, 10:12])
+    @test test_chunk_indices(; array_length=15, n=nothing, size=4, split=BatchSplit(), result=[1:4, 5:8, 9:12, 13:15])
+    @test test_sum(; array_length=1, n=nothing, size=1, split=BatchSplit())
+    @test test_sum(; array_length=2, n=nothing, size=2, split=BatchSplit())
+    @test test_sum(; array_length=2, n=nothing, size=1, split=BatchSplit())
+    @test test_sum(; array_length=3, n=nothing, size=2, split=BatchSplit())
+    @test test_sum(; array_length=4, n=nothing, size=1, split=BatchSplit())
+    @test test_sum(; array_length=7, n=nothing, size=3, split=BatchSplit())
+    @test test_sum(; array_length=7, n=nothing, size=4, split=BatchSplit())
+    @test test_sum(; array_length=7, n=nothing, size=5, split=BatchSplit())
+    @test test_sum(; array_length=12, n=nothing, size=3, split=BatchSplit())
+    @test test_sum(; array_length=15, n=nothing, size=4, split=BatchSplit())
     x = OffsetArray(1:7, -1:5)
-    @test collect.(chunk_indices(x; n=nothing, size=3, split=ConsecutiveSplit())) == [[-1, 0, 1], [2, 3, 4], [5]]
+    @test collect.(chunk_indices(x; n=nothing, size=3, split=BatchSplit())) == [[-1, 0, 1], [2, 3, 4], [5]]
 end
 
-@testitem "RoundRobinSplit" setup = [Testing] begin
+@testitem "ScatterSplit" setup = [Testing] begin
     using OffsetArrays: OffsetArray
-    @test test_chunk_indices(; array_length=1, n=1, size=nothing, split=RoundRobinSplit(), result=[1:1])
-    @test test_chunk_indices(; array_length=2, n=1, size=nothing, split=RoundRobinSplit(), result=[1:2])
-    @test test_chunk_indices(; array_length=2, n=2, size=nothing, split=RoundRobinSplit(), result=[1:1, 2:2])
-    @test test_chunk_indices(; array_length=3, n=2, size=nothing, split=RoundRobinSplit(), result=[1:2:3, 2:2:2])
-    @test test_chunk_indices(; array_length=7, n=3, size=nothing, split=RoundRobinSplit(), result=[1:3:7, 2:3:5, 3:3:6])
-    @test test_chunk_indices(; array_length=12, n=4, size=nothing, split=RoundRobinSplit(), result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
-    @test test_chunk_indices(; array_length=15, n=4, size=nothing, split=RoundRobinSplit(), result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
-    @test test_sum(; array_length=1, n=1, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=2, n=1, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=2, n=2, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=3, n=2, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=7, n=3, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=12, n=4, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=15, n=4, size=nothing, split=RoundRobinSplit())
-    @test test_sum(; array_length=117, n=4, size=nothing, split=RoundRobinSplit())
+    @test test_chunk_indices(; array_length=1, n=1, size=nothing, split=ScatterSplit(), result=[1:1])
+    @test test_chunk_indices(; array_length=2, n=1, size=nothing, split=ScatterSplit(), result=[1:2])
+    @test test_chunk_indices(; array_length=2, n=2, size=nothing, split=ScatterSplit(), result=[1:1, 2:2])
+    @test test_chunk_indices(; array_length=3, n=2, size=nothing, split=ScatterSplit(), result=[1:2:3, 2:2:2])
+    @test test_chunk_indices(; array_length=7, n=3, size=nothing, split=ScatterSplit(), result=[1:3:7, 2:3:5, 3:3:6])
+    @test test_chunk_indices(; array_length=12, n=4, size=nothing, split=ScatterSplit(), result=[1:4:9, 2:4:10, 3:4:11, 4:4:12])
+    @test test_chunk_indices(; array_length=15, n=4, size=nothing, split=ScatterSplit(), result=[1:4:13, 2:4:14, 3:4:15, 4:4:12])
+    @test test_sum(; array_length=1, n=1, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=2, n=1, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=2, n=2, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=3, n=2, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=7, n=3, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=12, n=4, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=15, n=4, size=nothing, split=ScatterSplit())
+    @test test_sum(; array_length=117, n=4, size=nothing, split=ScatterSplit())
     x = OffsetArray(1:7, -1:5)
-    @test collect.(chunk_indices(x; n=3, split=RoundRobinSplit())) == [[-1, 2, 5], [0, 3], [1, 4]]
+    @test collect.(chunk_indices(x; n=3, split=ScatterSplit())) == [[-1, 2, 5], [0, 3], [1, 4]]
 
     # FixedSize
-    @test_throws ArgumentError collect(chunk_indices(1:10; size=2, split=RoundRobinSplit())) # not supported (yet?)
+    @test_throws ArgumentError collect(chunk_indices(1:10; size=2, split=ScatterSplit())) # not supported (yet?)
 end
 
 @testitem "check input argument errors" begin
@@ -168,7 +168,7 @@ end
     @test sum(s) ≈ sum(x)
 
     y = [1.0, 5.0, 7.0, 9.0, 3.0]
-    # ConsecutiveSplit()
+    # BatchSplit()
     @test collect(enumerate(chunk_indices(2:10; n=2))) == [(1, 1:5), (2, 6:9)]
     @test typeof(collect(enumerate(chunk_indices(2:10; n=2)))) == Vector{Tuple{Int64,UnitRange{Int64}}}
     @test collect(enumerate(chunk_indices(y; n=2))) == [(1, 1:3), (2, 4:5)]
@@ -178,14 +178,14 @@ end
     @test eachindex(enumerate(chunk_indices(2:10; n=3))) == 1:3
     @test eachindex(enumerate(chunk_indices(2:10; size=2))) == 1:5
 
-    # RoundRobinSplit()
-    @test collect(enumerate(chunk_indices(2:10; n=2, split=RoundRobinSplit()))) == [(1, 1:2:9), (2, 2:2:8)]
-    @test typeof(collect(enumerate(chunk_indices(2:10; n=2, split=RoundRobinSplit())))) == Vector{Tuple{Int64,StepRange{Int64,Int64}}}
-    @test collect(enumerate(chunk_indices(y; n=2, split=RoundRobinSplit()))) == [(1, 1:2:5), (2, 2:2:4)]
-    @test typeof(collect(enumerate(chunk_indices(y; n=2, split=RoundRobinSplit())))) <: (Vector{Tuple{Int64,T}} where {T<:StepRange})
-    @test eltype(enumerate(chunk_indices(2:10; n=2, split=RoundRobinSplit()))) <: Tuple{Int64,StepRange{Int64,Int64}}
-    @test eltype(enumerate(chunk_indices(y; n=2, split=RoundRobinSplit()))) <: Tuple{Int64,StepRange}
-    @test eachindex(enumerate(chunk_indices(2:10; n=3, split=RoundRobinSplit()))) == 1:3
+    # ScatterSplit()
+    @test collect(enumerate(chunk_indices(2:10; n=2, split=ScatterSplit()))) == [(1, 1:2:9), (2, 2:2:8)]
+    @test typeof(collect(enumerate(chunk_indices(2:10; n=2, split=ScatterSplit())))) == Vector{Tuple{Int64,StepRange{Int64,Int64}}}
+    @test collect(enumerate(chunk_indices(y; n=2, split=ScatterSplit()))) == [(1, 1:2:5), (2, 2:2:4)]
+    @test typeof(collect(enumerate(chunk_indices(y; n=2, split=ScatterSplit())))) <: (Vector{Tuple{Int64,T}} where {T<:StepRange})
+    @test eltype(enumerate(chunk_indices(2:10; n=2, split=ScatterSplit()))) <: Tuple{Int64,StepRange{Int64,Int64}}
+    @test eltype(enumerate(chunk_indices(y; n=2, split=ScatterSplit()))) <: Tuple{Int64,StepRange}
+    @test eachindex(enumerate(chunk_indices(2:10; n=3, split=ScatterSplit()))) == 1:3
 end
 
 @testitem "enumerate(chunk(...))" begin
@@ -204,7 +204,7 @@ end
     @test sum(s) ≈ sum(x)
 
     y = [1.0, 5.0, 7.0, 9.0, 3.0]
-    # ConsecutiveSplit()
+    # BatchSplit()
     @test collect(enumerate(chunk(2:10; n=2))) == [(1, 2:6), (2, 7:10)]
     @test typeof(collect(enumerate(chunk(2:10; n=2)))) == Vector{Tuple{Int64,UnitRange{Int64}}}
     @test collect(enumerate(chunk(y; n=2))) == [(1, [1.0, 5.0, 7.0]), (2, [9.0, 3.0])]
@@ -214,25 +214,25 @@ end
     @test eachindex(enumerate(chunk(2:10; n=3))) == 1:3
     @test eachindex(enumerate(chunk(2:10; size=2))) == 1:5
 
-    # RoundRobinSplit()
-    @test collect(enumerate(chunk(2:10; n=2, split=RoundRobinSplit()))) == [(1, 2:2:10), (2, 3:2:9)]
-    @test typeof(collect(enumerate(chunk(2:10; n=2, split=RoundRobinSplit())))) == Vector{Tuple{Int64,StepRange{Int64,Int64}}}
-    @test collect(enumerate(chunk(y; n=2, split=RoundRobinSplit()))) == [(1, [1.0, 7.0, 3.0]), (2, [5.0, 9.0])]
-    @test typeof(collect(enumerate(chunk(y; n=2, split=RoundRobinSplit())))) <: (Vector{Tuple{Int64,T}} where {T<:SubArray})
-    @test eltype(enumerate(chunk(2:10; n=2, split=RoundRobinSplit()))) <: Tuple{Int64,StepRange{Int64,Int64}}
-    @test eltype(enumerate(chunk(y; n=2, split=RoundRobinSplit()))) <: Tuple{Int64,SubArray}
-    @test eachindex(enumerate(chunk(2:10; n=3, split=RoundRobinSplit()))) == 1:3
+    # ScatterSplit()
+    @test collect(enumerate(chunk(2:10; n=2, split=ScatterSplit()))) == [(1, 2:2:10), (2, 3:2:9)]
+    @test typeof(collect(enumerate(chunk(2:10; n=2, split=ScatterSplit())))) == Vector{Tuple{Int64,StepRange{Int64,Int64}}}
+    @test collect(enumerate(chunk(y; n=2, split=ScatterSplit()))) == [(1, [1.0, 7.0, 3.0]), (2, [5.0, 9.0])]
+    @test typeof(collect(enumerate(chunk(y; n=2, split=ScatterSplit())))) <: (Vector{Tuple{Int64,T}} where {T<:SubArray})
+    @test eltype(enumerate(chunk(2:10; n=2, split=ScatterSplit()))) <: Tuple{Int64,StepRange{Int64,Int64}}
+    @test eltype(enumerate(chunk(y; n=2, split=ScatterSplit()))) <: Tuple{Int64,SubArray}
+    @test eachindex(enumerate(chunk(2:10; n=3, split=ScatterSplit()))) == 1:3
 end
 
 @testitem "ChunksIterator parametric types order" begin
     # Try not to break the order of the type parameters. ChunksIterator is
     # not public, but its being used by OhMyThreads.
     using ChunkSplitters.Internals: ChunksIterator
-    using ChunkSplitters.Internals: FixedCount, ConsecutiveSplit, ReturnIndices, ReturnViews
-    @test ChunksIterator{typeof(1:7),FixedCount,ConsecutiveSplit,ReturnIndices}(1:7, 3, 0) ==
-          ChunksIterator{UnitRange{Int64},FixedCount,ConsecutiveSplit,ReturnIndices}(1:7, 3, 0)
-    @test ChunksIterator{typeof(1:7),FixedCount,ConsecutiveSplit,ReturnViews}(1:7, 3, 0) ==
-          ChunksIterator{UnitRange{Int64},FixedCount,ConsecutiveSplit,ReturnViews}(1:7, 3, 0)
+    using ChunkSplitters.Internals: FixedCount, BatchSplit, ReturnIndices, ReturnViews
+    @test ChunksIterator{typeof(1:7),FixedCount,BatchSplit,ReturnIndices}(1:7, 3, 0) ==
+          ChunksIterator{UnitRange{Int64},FixedCount,BatchSplit,ReturnIndices}(1:7, 3, 0)
+    @test ChunksIterator{typeof(1:7),FixedCount,BatchSplit,ReturnViews}(1:7, 3, 0) ==
+          ChunksIterator{UnitRange{Int64},FixedCount,BatchSplit,ReturnViews}(1:7, 3, 0)
 end
 
 @testitem "indexing" begin
@@ -325,16 +325,16 @@ end
     @test collect(enumerate(chunk_indices(x; n=3))) == [(1, 1:3), (2, 4:5), (3, 6:7)]
     @test eltype(enumerate(chunk_indices(x; n=3))) == Tuple{Int64,UnitRange{Int}}
     @test typeof(first(chunk_indices(x; n=3))) == UnitRange{Int}
-    @test collect(chunk_indices(x; n=3, split=RoundRobinSplit())) == [1:3:7, 2:3:5, 3:3:6]
-    @test collect(enumerate(chunk_indices(x; n=3, split=RoundRobinSplit()))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
-    @test eltype(enumerate(chunk_indices(x; n=3, split=RoundRobinSplit()))) == Tuple{Int64,StepRange{Int64,Int64}}
+    @test collect(chunk_indices(x; n=3, split=ScatterSplit())) == [1:3:7, 2:3:5, 3:3:6]
+    @test collect(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
+    @test eltype(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == Tuple{Int64,StepRange{Int64,Int64}}
 
     @test_throws MethodError collect(chunk(x; n=3))
     Base.view(m::MinimalInterface, I::UnitRange{Int64}) = MinimalInterface()
     @test collect(chunk(x; n=3)) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
-    @test_throws MethodError collect(chunk(x; n=3, split=RoundRobinSplit()))
+    @test_throws MethodError collect(chunk(x; n=3, split=ScatterSplit()))
     Base.view(m::MinimalInterface, I::StepRange{Int64,Int64}) = MinimalInterface()
-    @test collect(chunk(x; n=3, split=RoundRobinSplit())) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
+    @test collect(chunk(x; n=3, split=ScatterSplit())) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
 end
 
 @testitem "empty input" begin
@@ -350,14 +350,14 @@ end
             @test typeof(collect(enumerate(f(10:9; n=2)))) == Vector{Tuple{Int64,UnitRange{Int64}}}
             @test isempty(collect(enumerate(f(10:9; size=2))))
             @test typeof(collect(enumerate(f(10:9; size=2)))) == Vector{Tuple{Int64,UnitRange{Int64}}}
-            @test isempty(collect(f(10:9; n=2, split=RoundRobinSplit())))
-            @test typeof(collect(f(10:9; n=2, split=RoundRobinSplit()))) == Vector{StepRange{Int,Int}}
-            @test isempty(collect(f(10:9; size=2, split=RoundRobinSplit())))
-            @test typeof(collect(f(10:9; size=2, split=RoundRobinSplit()))) == Vector{StepRange{Int,Int}}
-            @test isempty(collect(enumerate(f(10:9; n=2, split=RoundRobinSplit()))))
-            @test typeof(collect(enumerate(f(10:9; n=2, split=RoundRobinSplit())))) == Vector{Tuple{Int64,StepRange{Int,Int}}}
-            @test isempty(collect(enumerate(f(10:9; size=2, split=RoundRobinSplit()))))
-            @test typeof(collect(enumerate(f(10:9; size=2, split=RoundRobinSplit())))) == Vector{Tuple{Int64,StepRange{Int,Int}}}
+            @test isempty(collect(f(10:9; n=2, split=ScatterSplit())))
+            @test typeof(collect(f(10:9; n=2, split=ScatterSplit()))) == Vector{StepRange{Int,Int}}
+            @test isempty(collect(f(10:9; size=2, split=ScatterSplit())))
+            @test typeof(collect(f(10:9; size=2, split=ScatterSplit()))) == Vector{StepRange{Int,Int}}
+            @test isempty(collect(enumerate(f(10:9; n=2, split=ScatterSplit()))))
+            @test typeof(collect(enumerate(f(10:9; n=2, split=ScatterSplit())))) == Vector{Tuple{Int64,StepRange{Int,Int}}}
+            @test isempty(collect(enumerate(f(10:9; size=2, split=ScatterSplit()))))
+            @test typeof(collect(enumerate(f(10:9; size=2, split=ScatterSplit())))) == Vector{Tuple{Int64,StepRange{Int,Int}}}
         end
     end
 
@@ -371,7 +371,7 @@ end
     for f in (chunk_indices, chunk)
         f_batch = () -> f(1:7; n=4)
         @test f_batch() == @inferred f_batch()
-        f_scatter = () -> f(1:7; n=4, split=RoundRobinSplit())
+        f_scatter = () -> f(1:7; n=4, split=ScatterSplit())
         @test f_scatter() == @inferred f_scatter()
         f_size = () -> f(1:7; size=4)
         @test f_size() == @inferred f_size()

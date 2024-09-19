@@ -2,7 +2,7 @@
     chunk_indices(collection;
         n::Union{Nothing, Integer}=nothing,
         size::Union{Nothing, Integer}=nothing,
-        [split::Split=ConsecutiveSplit(),]
+        [split::Split=BatchSplit(),]
         [minchunksize::Union{Nothing,Integer}=nothing,]
     )
 
@@ -18,9 +18,9 @@ The keyword arguments `n` and `size` are mutually exclusive.
 
 * `split` can be used to determine the splitting strategy,
   i.e. the distribution of the indices among chunks.
-  If `split = ConsecutiveSplit()` (default), chunks will hold consecutive indices and will hold
+  If `split = BatchSplit()` (default), chunks will hold consecutive indices and will hold
   approximately the same number of indices (as far as possible).
-  If `split = RoundRobinSplit()`, indices will be assigned to chunks in a round-robin fashion.
+  If `split = ScatterSplit()`, indices will be assigned to chunks in a round-robin fashion.
 
 * `minchunksize` can be used to specify the minimum size of a chunk,
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
@@ -71,7 +71,7 @@ function chunk_indices end
     chunk(collection;
         n::Union{Nothing, Integer}=nothing,
         size::Union{Nothing, Integer}=nothing,
-        [split::Split=ConsecutiveSplit(),]
+        [split::Split=BatchSplit(),]
         [minchunksize::Union{Nothing,Integer}=nothing,]
     )
 
@@ -88,9 +88,9 @@ The keyword arguments `n` and `size` are mutually exclusive.
 
 * `split` can be used to determine the splitting strategy,
   i.e. the distribution of the indices among chunks.
-  If `split = ConsecutiveSplit()` (default), chunks will hold consecutive elements and will hold
+  If `split = BatchSplit()` (default), chunks will hold consecutive elements and will hold
   approximately the same number of elements (as far as possible).
-  If `split = RoundRobinSplit()`, elements will be assigned to chunks in a round-robin fashion.
+  If `split = ScatterSplit()`, elements will be assigned to chunks in a round-robin fashion.
 
 * `minchunksize` can be used to specify the minimum size of a chunk,
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
@@ -154,8 +154,8 @@ abstract type Split end
 Chunks will hold consecutive indices/elements and will hold approximately the same
 number of them (as far as possible).
 """
-struct ConsecutiveSplit <: Split end
+struct BatchSplit <: Split end
 """
 Elements/indices will be assigned to chunks in a round-robin fashion.
 """
-struct RoundRobinSplit <: Split end
+struct ScatterSplit <: Split end
