@@ -18,46 +18,35 @@ struct ChunksIterator{T,C<:Constraint,S<:SplitStrategy,R<:ReturnType}
     size::Int
 end
 
+function ChunksIterator(s::SplitStrategy, r::ReturnType; itr, n=nothing, size=nothing, minchunksize=nothing)
+    is_chunkable(itr) || err_not_chunkable(itr)
+    isnothing(n) && isnothing(size) && err_missing_input()
+    !isnothing(size) && !isnothing(n) && err_mutually_exclusive("size", "n")
+    C, n, size = _set_C_n_size(itr, n, size, minchunksize)
+    return ChunksIterator{typeof(itr),C,typeof(s),typeof(r)}(itr, n, size)
+end
+
+# public API
 function chunk_indices(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::SplitStrategy=BatchSplit(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
-    is_chunkable(itr) || not_chunkable_err(itr)
-    isnothing(n) && isnothing(size) && missing_input_err()
-    !isnothing(size) && !isnothing(n) && mutually_exclusive_err("size", "n")
-    C, n, size = _set_C_n_size(itr, n, size, minchunksize)
-
-    if split isa BatchSplit
-        return ChunksIterator{typeof(itr),C,BatchSplit,ReturnIndices}(itr, n, size)
-    elseif split isa ScatterSplit
-        return ChunksIterator{typeof(itr),C,ScatterSplit,ReturnIndices}(itr, n, size)
-    else
-        split_err()
-    end
+    return ChunksIterator(split, ReturnIndices(); itr, n, size, minchunksize)
 end
 
+# public API
 function chunk(itr;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::SplitStrategy=BatchSplit(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
-    is_chunkable(itr) || not_chunkable_err(itr)
-    isnothing(n) && isnothing(size) && missing_input_err()
-    !isnothing(size) && !isnothing(n) && mutually_exclusive_err("size", "n")
-    C, n, size = _set_C_n_size(itr, n, size, minchunksize)
-
-    if split isa BatchSplit
-        return ChunksIterator{typeof(itr),C,BatchSplit,ReturnViews}(itr, n, size)
-    elseif split isa ScatterSplit
-        return ChunksIterator{typeof(itr),C,ScatterSplit,ReturnViews}(itr, n, size)
-    else
-        split_err()
-    end
+    return ChunksIterator(split, ReturnViews(); itr, n, size, minchunksize)
 end
 
+# public API
 is_chunkable(::Any) = false
 is_chunkable(::AbstractArray) = true
 is_chunkable(::Tuple) = true
@@ -69,7 +58,7 @@ function _set_minchunksize(minchunksize::Integer)
     return minchunksize
 end
 function _set_C_n_size(itr, n::Nothing, size::Integer, minchunksize)
-    !isnothing(minchunksize) && mutually_exclusive_err("size", "minchunksize")
+    !isnothing(minchunksize) && err_mutually_exclusive("size", "minchunksize")
     size < 1 && throw(ArgumentError("size must be >= 1"))
     return FixedSize, 0, size
 end
@@ -80,16 +69,15 @@ function _set_C_n_size(itr, n::Integer, size::Nothing, minchunksize)
     FixedCount, nmax, 0
 end
 
-function missing_input_err()
+function err_missing_input()
     throw(ArgumentError("You must either indicate the desired number of chunks (n) or the target size of a chunk (size)."))
 end
-function mutually_exclusive_err(var1, var2)
+function err_mutually_exclusive(var1, var2)
     throw(ArgumentError("$var1 and $var2 are mutually exclusive."))
 end
-function not_chunkable_err(::T) where {T}
+function err_not_chunkable(::T) where {T}
     throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or if it is compatible with the chunks minimal interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
 end
-@noinline split_err() = throw(ArgumentError("split must be one of $(subtypes(SplitStrategy))"))
 
 firstindex(::ChunksIterator) = 1
 
@@ -154,16 +142,12 @@ length(ec::Enumerate{<:ChunksIterator}) = length(ec.itr)
 
 eachindex(ec::Enumerate{<:ChunksIterator}) = Base.OneTo(length(ec.itr))
 
-# _empty_itr(::Type{BatchSplit}) = 0:-1
-# _empty_itr(::Type{ScatterSplit}) = 0:1:-1
-
 """
     getchunkindices(c::ChunksIterator, i::Integer)
 
 Returns the range of indices of `itr` that corresponds to the `i`-th chunk.
 """
 function getchunkindices(c::ChunksIterator{T,C,S}, ichunk::Integer) where {T,C,S}
-    # length(c.itr) == 0 && return _empty_itr(S)
     ichunk <= length(c.itr) || throw(ArgumentError("ichunk must be less or equal to the length of the ChunksIterator"))
     if C == FixedCount
         n = c.n

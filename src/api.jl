@@ -1,35 +1,42 @@
 """
-    chunk_indices(itr;
-        n::Union{Nothing, Integer}, size::Union{Nothing, Integer}
-        [, split::Union{SplitStrategy, Symbol}=BatchSplit()]
-        [, minchunksize::Union{Nothing,Integer}]
+    chunk_indices(collection;
+        n::Union{Nothing, Integer}=nothing,
+        size::Union{Nothing, Integer}=nothing,
+        [split::SplitStrategy=BatchSplit(),]
+        [minchunksize::Union{Nothing,Integer}=nothing,]
     )
 
-Returns an iterator that splits the *indices* of `itr` into
+Returns an iterator that splits the *indices* of `collection` into
 `n`-many chunks (if `n` is given) or into chunks of a certain size (if `size` is given).
+The returned iterator can be used to process chunks of *indices* of `collection` one after
+another. If you want to process chunks of *elements* of `collection`,
+check out `chunk(...)` instead.
+
 The keyword arguments `n` and `size` are mutually exclusive.
-The returned iterator can be used to process chunks of `itr` one after another or
-in parallel (e.g. with `@threads`).
 
-The optional argument `split` can be `BatchSplit()` (or `:batch`) (default) or
-`ScatterSplit()` (or `:scatter`) and determines the distribution of the indices among the
-chunks.
-If `split == BatchSplit()`, chunk indices will be consecutive.
-If `split == ScatterSplit()`, the range is scattered over `itr`.
-Note that providing `split` in form of symbols (`:batch` or `:scatter`) can be slightly
-less efficient.
+### Keyword arguments (optional)
 
-The optional argument `minchunksize` can be used to specify the minimum size of a chunk,
-and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
-are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
-each chunk is at least `minchunksize` long.
+* `split` can be used to determine the splitting strategy,
+  i.e. the distribution of the indices among chunks.
+  If `split = BatchSplit()` (default), chunks will hold consecutive indices and will hold
+  approximately the same number of indices (as far as possible).
+  If `split = ScatterSplit()`, indices will be assigned to chunks in a round-robin fashion.
+
+* `minchunksize` can be used to specify the minimum size of a chunk,
+  and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
+  are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
+  each chunk is at least `minchunksize` long.
+
+### Noteworthy
 
 If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
 `enumerate(chunk_indices(...))` can be used in conjuction with `@threads`.
 
-The `itr` is usually some iterable, indexable object. The interface requires it to have
-`firstindex`, `lastindex`, and `length` functions defined, as well as
-`ChunkSplitters.is_chunkable(::typeof(itr)) = true`.
+### Requirements
+
+The input `collection` must have at least `firstindex`, `lastindex`, and `length` functions
+defined, as well as `ChunkSplitters.is_chunkable(::typeof(collection)) = true`.
+Out of the box, `AbstractArray`s and `Tuple`s are supported.
 
 ## Examples
 
@@ -56,41 +63,97 @@ julia> collect(chunk_indices(1:7; size=3))
  4:6
  7:7
 ```
-
-Note that `chunk_indices` also works just fine for `OffsetArray`s:
-
-```jldoctest
-julia> using ChunkSplitters, OffsetArrays
-
-julia> x = OffsetArray(1:7, -1:5);
-
-julia> collect(chunk_indices(x; n=3))
-3-element Vector{UnitRange{Int64}}:
- -1:1
- 2:3
- 4:5
-
-julia> collect(chunk_indices(x; n=3, split=ScatterSplit()))
-3-element Vector{StepRange{Int64, Int64}}:
- -1:3:5
- 0:3:3
- 1:3:4
-```
-
 """
 function chunk_indices end
 
+"""
+    chunk(collection;
+        n::Union{Nothing, Integer}=nothing,
+        size::Union{Nothing, Integer}=nothing,
+        [split::SplitStrategy=BatchSplit(),]
+        [minchunksize::Union{Nothing,Integer}=nothing,]
+    )
+
+Returns an iterator that splits the *elements* of `collection` into
+`n`-many chunks (if `n` is given) or into chunks of a certain size (if `size` is given).
+To avoid copies, chunks will generally hold a view into the original collection.
+The returned iterator can be used to process chunks of *elements* of `collection` one after
+another. If you want to process chunks of *indices* of `collection`,
+check out `chunk_indices(...)` instead.
+
+The keyword arguments `n` and `size` are mutually exclusive.
+
+### Keyword arguments (optional)
+
+* `split` can be used to determine the splitting strategy,
+  i.e. the distribution of the indices among chunks.
+  If `split = BatchSplit()` (default), chunks will hold consecutive elements and will hold
+  approximately the same number of elements (as far as possible).
+  If `split = ScatterSplit()`, elements will be assigned to chunks in a round-robin fashion.
+
+* `minchunksize` can be used to specify the minimum size of a chunk,
+  and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
+  are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
+  each chunk is at least `minchunksize` long.
+
+### Noteworthy
+
+If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
+`enumerate(chunk(...))` can be used in conjuction with `@threads`.
+
+### Requirements
+
+The input `collection` must have at least `firstindex`, `lastindex`, and `length` functions
+defined, as well as `ChunkSplitters.is_chunkable(::typeof(collection)) = true`.
+Out of the box, `AbstractArray`s and `Tuple`s are supported.
+
+## Examples
+
+```jldoctest
+julia> using ChunkSplitters
+
+julia> x = [1.2, 3.4, 5.6, 7.8, 9.0];
+
+julia> collect(chunk(x; n=3))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
+ [1.2, 3.4]
+ [5.6, 7.8]
+ [9.0]
+
+julia> collect(enumerate(chunk(x; n=3)))
+3-element Vector{Tuple{Int64, SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}}:
+ (1, [1.2, 3.4])
+ (2, [5.6, 7.8])
+ (3, [9.0])
+
+julia> collect(chunk(x; size=3))
+2-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
+ [1.2, 3.4, 5.6]
+ [7.8, 9.0]
+```
+"""
 function chunk end
 
 """
-    is_chunkable(::T) :: Bool
+    is_chunkable(::T)::Bool
 
-Determines if a of object of type `T` is capable of being `chunk`ed. Overload this function for your custom
-types if that type is linearly indexable and supports `firstindex`, `lastindex`, and `length`.
+Returns `true` if an object of type `T` can be chunked with `chunk`/`chunk_indices`.
+Overload this function for your custom types if that type is linearly indexable and
+supports `firstindex`, `lastindex`, and `length`.
 """
 function is_chunkable end
 
-# TODO: document
+"""
+Subtypes can be used to indicate a splitting strategy for `chunk` and `chunk_indices`
+(`split` keyword argument).
+"""
 abstract type SplitStrategy end
+"""
+Chunks will hold consecutive indices/elements and will hold approximately the same
+number of them (as far as possible).
+"""
 struct BatchSplit <: SplitStrategy end
+"""
+Elements/indices will be assigned to chunks in a round-robin fashion.
+"""
 struct ScatterSplit <: SplitStrategy end
