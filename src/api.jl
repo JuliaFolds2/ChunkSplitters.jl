@@ -34,8 +34,9 @@ If you need a running chunk index you can combine `chunks` with `enumerate`. In 
 
 ### Requirements
 
-The input `collection` must have at least `firstindex`, `lastindex`, and `length` functions
-defined, as well as `ChunkSplitters.is_chunkable(::typeof(collection)) = true`.
+The type of the input `collection` must have at least `firstindex`, `lastindex`, and
+`length` functions defined, as well as
+`ChunkSplitters.is_chunkable(::typeof(collection)) = true`.
 Out of the box, `AbstractArray`s and `Tuple`s are supported.
 
 ## Examples
@@ -103,8 +104,9 @@ If you need a running chunk index you can combine `chunks` with `enumerate`. In 
 
 ### Requirements
 
-The input `collection` must have at least `firstindex`, `lastindex`, and `length` functions
-defined, as well as `ChunkSplitters.is_chunkable(::typeof(collection)) = true`.
+On top of the requirements for `chunk_indices` (see docstring), the type of the input
+`collection` must have an implementation of `view`, especially
+`view(::typeof(collection), ::UnitRange)` and `view(::typeof(collection), ::StepRange)`.
 Out of the box, `AbstractArray`s and `Tuple`s are supported.
 
 ## Examples

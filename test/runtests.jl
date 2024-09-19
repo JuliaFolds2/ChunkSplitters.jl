@@ -141,7 +141,7 @@ end
             @test_throws ArgumentError f(1:10; size=nothing)
             @test_throws ArgumentError f(1:10; n=5, size=2)
             @test_throws ArgumentError f(1:10; n=5, size=20)
-            @test_throws TypeError f(1:10; n=2, split=:batch) # not supported anymore
+            @test_throws TypeError f(1:10; n=2, split=BatchSplit()) # not supported anymore
         end
     end
 end
@@ -314,83 +314,98 @@ end
     end
 end
 
-# @testitem "return type" begin
-#     using ChunkSplitters: chunk_indices, getchunkindices
-#     using BenchmarkTools: @benchmark
-#     @test typeof(getchunkindices(1:10, 1; n=2, split=:batch)) == UnitRange{Int}
-#     @test typeof(getchunkindices(1:10, 1; size=2, split=:batch)) == UnitRange{Int}
-#     @test typeof(getchunkindices(1:10, 1; n=2, split=:scatter)) == StepRange{Int,Int}
-#     function mwe(ichunk=2, n=5, l=10)
-#         xs = collect(1:l)
-#         ys = collect(1:l)
-#         cx = getchunkindices(xs, ichunk; n=n, split=:batch)
-#         cy = getchunkindices(ys, ichunk; n=n, split=:batch)
-#         return Iterators.zip(cx, cy)
-#     end
-#     function mwe_size(ichunk=2, size=2, l=10)
-#         xs = collect(1:l)
-#         ys = collect(1:l)
-#         cx = getchunkindices(xs, ichunk; size=size, split=:batch)
-#         cy = getchunkindices(ys, ichunk; size=size, split=:batch)
-#         return Iterators.zip(cx, cy)
-#     end
-#     @test zip(3:4, 3:4) == @inferred mwe()
-#     @test zip(3:4, 3:4) == @inferred mwe_size()
-#     @test_throws ArgumentError getchunkindices(1:10, 1; n=2, split=:error)
-#     x = rand(10)
-#     @test typeof(first(chunk_indices(x; n=5))) == UnitRange{Int}
-#     @test eltype(chunk_indices(x; n=5)) == UnitRange{Int}
-#     @test typeof(first(chunk_indices(x; size=2))) == UnitRange{Int}
-#     @test eltype(chunk_indices(x; n=2)) == UnitRange{Int}
-#     # Empty iterator
-#     @test getchunkindices(10:9, 1; n=2) === 0:-1
-#     @test getchunkindices(10:9, 1; size=2) === 0:-1
-#     @test getchunkindices(10:9, 1; n=2, split=:scatter) === 0:1:-1
-#     @test getchunkindices(10:9, 1; size=2, split=:scatter) === 0:1:-1
-#     @test collect(chunk_indices(10:9; n=2)) == Vector{UnitRange{Int}}()
-#     @test collect(chunk_indices(10:9; size=2)) == Vector{UnitRange{Int}}()
-#     @test collect(enumerate(chunk_indices(10:9; n=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
-#     @test collect(enumerate(chunk_indices(10:9; size=2))) == Tuple{Int64,Vector{UnitRange{Int}}}[]
-#     @test collect(chunk_indices(10:9; n=2, split=:scatter)) == Vector{StepRange{Int,Int}}()
-#     @test collect(chunk_indices(10:9; size=2, split=:scatter)) == Vector{StepRange{Int,Int}}()
-#     @test collect(enumerate(chunk_indices(10:9; n=2, split=:scatter))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
-#     @test collect(enumerate(chunk_indices(10:9; size=2, split=:scatter))) == Tuple{Int64,Vector{StepRange{Int,Int}}}[]
-#     # test inference of chunks
-#     f() = chunk_indices(1:7; n=4)
-#     @test f() == @inferred f()
-#     f() = chunk_indices(1:7; n=4, split=:scatter)
-#     @test f() == @inferred f()
-#     f() = chunk_indices(1:7; size=4, split=:scatter)
-#     @test f() == @inferred f()
-#     function f(x; n=nothing, size=nothing)
-#         s = zero(eltype(x))
-#         for inds in chunk_indices(x; n=n, size=size)
-#             for i in inds
-#                 s += x[i]
-#             end
-#         end
-#         return s
-#     end
-#     x = rand(10^3)
-#     b = @benchmark f($x; n=4) samples = 1 evals = 1
-#     @test b.allocs == 0
-#     b = @benchmark f($x; size=10) samples = 1 evals = 1
-#     @test b.allocs == 0
-# end
+@testitem "Minimial interface" begin
+    struct MinimalInterface end
+    Base.firstindex(::MinimalInterface) = 1
+    Base.lastindex(::MinimalInterface) = 7
+    Base.length(::MinimalInterface) = 7
+    ChunkSplitters.is_chunkable(::MinimalInterface) = true
+    x = MinimalInterface()
+    @test collect(chunk_indices(x; n=3)) == [1:3, 4:5, 6:7]
+    @test collect(enumerate(chunk_indices(x; n=3))) == [(1, 1:3), (2, 4:5), (3, 6:7)]
+    @test eltype(enumerate(chunk_indices(x; n=3))) == Tuple{Int64,UnitRange{Int}}
+    @test typeof(first(chunk_indices(x; n=3))) == UnitRange{Int}
+    @test collect(chunk_indices(x; n=3, split=ScatterSplit())) == [1:3:7, 2:3:5, 3:3:6]
+    @test collect(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
+    @test eltype(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == Tuple{Int64,StepRange{Int64,Int64}}
 
-# @testitem "Minimial interface" begin
-#     using ChunkSplitters: chunk_indicesplitters, chunks
-#     struct MinimalInterface end
-#     Base.firstindex(::MinimalInterface) = 1
-#     Base.lastindex(::MinimalInterface) = 7
-#     Base.length(::MinimalInterface) = 7
-#     ChunkSplitters.is_chunkable(::MinimalInterface) = true
-#     x = MinimalInterface()
-#     @test collect(chunk_indices(x; n=3)) == [1:3, 4:5, 6:7]
-#     @test collect(enumerate(chunk_indices(x; n=3))) == [(1, 1:3), (2, 4:5), (3, 6:7)]
-#     @test eltype(enumerate(chunk_indices(x; n=3))) == Tuple{Int64,UnitRange{Int}}
-#     @test typeof(first(chunk_indices(x; n=3))) == UnitRange{Int}
-#     @test collect(chunk_indices(x; n=3, split=ScatterSplit())) == [1:3:7, 2:3:5, 3:3:6]
-#     @test collect(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == [(1, 1:3:7), (2, 2:3:5), (3, 3:3:6)]
-#     @test eltype(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == Tuple{Int64,StepRange{Int64,Int64}}
-# end
+    @test_throws MethodError collect(chunk(x; n=3))
+    Base.view(m::MinimalInterface, I::UnitRange{Int64}) = MinimalInterface()
+    @test collect(chunk(x; n=3)) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
+    @test_throws MethodError collect(chunk(x; n=3, split=ScatterSplit()))
+    Base.view(m::MinimalInterface, I::StepRange{Int64,Int64}) = MinimalInterface()
+    @test collect(chunk(x; n=3, split=ScatterSplit())) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
+end
+
+@testitem "empty input" begin
+    for f in (chunk_indices, chunk)
+        @testset "$f" begin
+            # if we use UnitRange input the output types are identical because
+            # view will also output a UnitRange/StepRange
+            @test isempty(collect(f(10:9; n=2)))
+            @test typeof(collect(f(10:9; n=2))) == Vector{UnitRange{Int}}
+            @test isempty(collect(f(10:9; size=2)))
+            @test typeof(collect(f(10:9; size=2))) == Vector{UnitRange{Int}}
+            @test isempty(collect(enumerate(f(10:9; n=2))))
+            @test typeof(collect(enumerate(f(10:9; n=2)))) == Vector{Tuple{Int64,UnitRange{Int64}}}
+            @test isempty(collect(enumerate(f(10:9; size=2))))
+            @test typeof(collect(enumerate(f(10:9; size=2)))) == Vector{Tuple{Int64,UnitRange{Int64}}}
+            @test isempty(collect(f(10:9; n=2, split=ScatterSplit())))
+            @test typeof(collect(f(10:9; n=2, split=ScatterSplit()))) == Vector{StepRange{Int,Int}}
+            @test isempty(collect(f(10:9; size=2, split=ScatterSplit())))
+            @test typeof(collect(f(10:9; size=2, split=ScatterSplit()))) == Vector{StepRange{Int,Int}}
+            @test isempty(collect(enumerate(f(10:9; n=2, split=ScatterSplit()))))
+            @test typeof(collect(enumerate(f(10:9; n=2, split=ScatterSplit())))) == Vector{Tuple{Int64,StepRange{Int,Int}}}
+            @test isempty(collect(enumerate(f(10:9; size=2, split=ScatterSplit()))))
+            @test typeof(collect(enumerate(f(10:9; size=2, split=ScatterSplit())))) == Vector{Tuple{Int64,StepRange{Int,Int}}}
+        end
+    end
+
+    @test isempty(collect(chunk_indices(Float64[]; n=2)))
+    @test typeof(collect(chunk_indices(Float64[]; n=2))) == Vector{UnitRange{Int64}}
+    @test isempty(collect(chunk(Float64[]; n=2)))
+    @test typeof(collect(chunk(Float64[]; n=2))) == Vector{SubArray{Float64,1,Vector{Float64},Tuple{UnitRange{Int64}},true}}
+end
+
+@testitem "type inference" begin
+    for f in (chunk_indices, chunk)
+        f_batch = () -> f(1:7; n=4)
+        @test f_batch() == @inferred f_batch()
+        f_scatter = () -> f(1:7; n=4, split=ScatterSplit())
+        @test f_scatter() == @inferred f_scatter()
+        f_size = () -> f(1:7; size=4)
+        @test f_size() == @inferred f_size()
+    end
+end
+
+@testitem "zero-allocation benchmark" begin
+    using BenchmarkTools
+    @testset "chunk_indices" begin
+        function f_chunk_indices(x; n=nothing, size=nothing)
+            s = zero(eltype(x))
+            for xdata in chunk_indices(x; n=n, size=size)
+                s += sum(xdata)
+            end
+            return s
+        end
+        x = rand(10^3)
+        b = @benchmark $f_chunk_indices($x; n=4) samples = 1 evals = 1
+        @test b.allocs == 0
+        b = @benchmark $f_chunk_indices($x; size=10) samples = 1 evals = 1
+        @test b.allocs == 0
+    end
+    @testset "chunk" begin
+        function f_chunk(x; n=nothing, size=nothing)
+            s = zero(eltype(x))
+            for xdata in chunk(x; n=n, size=size)
+                s += sum(xdata)
+            end
+            return s
+        end
+        x = rand(10^3)
+        b = @benchmark $f_chunk($x; n=4) samples = 1 evals = 1
+        @test b.allocs == 0
+        b = @benchmark $f_chunk($x; size=10) samples = 1 evals = 1
+        @test_broken b.allocs == 0
+    end
+end
