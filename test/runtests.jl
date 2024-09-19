@@ -406,6 +406,6 @@ end
         b = @benchmark $f_chunk($x; n=4) samples = 1 evals = 1
         @test b.allocs == 0
         b = @benchmark $f_chunk($x; size=10) samples = 1 evals = 1
-        @test_broken b.allocs == 0
+        @test b.allocs == 0
     end
 end
