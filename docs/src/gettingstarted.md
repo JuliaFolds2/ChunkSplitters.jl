@@ -157,3 +157,5 @@ Both `chunk_indices` and `chunk` take an optional keyword argument `split` that 
 With `BatchSplit()`, chunks are "filled up" with indices/elements one after another. They will consist of **consecutive** indices/elements will hold approximately the same number of indices/elements (as far as possible). Note that this is unlike `Iterators.partition`.
 
 With `ScatterSplit()`, indices or elements are scattered across chunks in a round-robin fashion. The first index/element goes to the first chunk, the second index/element goes to the second chunk, and so on, until we run out of chunks and continue with the first chunk again.
+
+![split strategies](./assets/splitting_arrows.svg)
