@@ -1,44 +1,37 @@
 # ChunkSplitters.jl
 
-[ChunkSplitters.jl](https://github.com/JuliaFolds2/ChunkSplitters.jl) makes it easy to split the elements or indexes of a collection into chunks:
+[ChunkSplitters.jl](https://github.com/JuliaFolds2/ChunkSplitters.jl) makes it easy to split the elements or indices of a collection into chunks:
 
 ```julia-repl
 julia> using ChunkSplitters
 
-julia> x = [1.2, 3.4, 5.6, 7.8, 9.0];
+julia> x = [1.2, 3.4, 5.6, 7.8, 9.1, 10.11, 11.12];
 
-julia> collect(chunk(x; n=3))
-3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
- [1.2, 3.4]
- [5.6, 7.8]
- [9.0]
+julia> for inds in chunk_indices(x; n=3)
+           @show inds
+       end
+inds = 1:3
+inds = 4:5
+inds = 6:7
 
-julia> collect(chunk_indices(x; n=3))
-3-element Vector{UnitRange{Int64}}:
- 1:2
- 3:4
- 5:5
+julia> for c in chunk(x; n=3)
+           @show c
+       end
+c = [1.2, 3.4, 5.6]
+c = [7.8, 9.1]
+c = [10.11, 11.12]
 ```
 
-This can be useful in many areas, one of which is multithreading:
+This can be useful in many areas, one of which is multithreading, where we can use chunking to control the number of spawned tasks:
 
 ```julia
-using ChunkSplitters: chunk
-using Base.Threads: nthreads, @spawn
-
-x = rand(10^8);
-
 function parallel_sum(x; ntasks=nthreads())
     tasks = map(chunk(x; n=ntasks)) do chunk_of_x
         @spawn sum(chunk_of_x)
     end
     return sum(fetch, tasks)
 end
-
-parallel_sum(x) ≈ sum(x) # true
 ```
-
-Here, we spawn a task per chunk, each computing a partial sum. Note that for `ntasks < nthreads()` this allows us to effectively control the number of utilised Julia threads.
 
 Working with chunks and their respective indices also improves thread-safety compared to a naive parallelisation approach based on `threadid()` (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
 
