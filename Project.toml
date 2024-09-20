@@ -6,7 +6,7 @@ version = "3.0.0-DEV"
 [deps]
 
 [compat]
-Aqua = "0.8"
+Aqua = "0.8.5"
 BenchmarkTools = "1"
 Documenter = "1"
 OffsetArrays = "1"
