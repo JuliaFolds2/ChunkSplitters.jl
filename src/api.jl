@@ -150,11 +150,13 @@ Subtypes can be used to indicate a splitting strategy for `chunk` and `chunk_ind
 (`split` keyword argument).
 """
 abstract type Split end
+
 """
 Chunks will hold consecutive indices/elements and will hold approximately the same
 number of them (as far as possible).
 """
 struct BatchSplit <: Split end
+
 """
 Elements/indices will be assigned to chunks in a round-robin fashion.
 """
