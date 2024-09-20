@@ -56,10 +56,10 @@ end
     Aqua.test_all(ChunkSplitters)
 end
 
-# @testitem "Doctests" begin
-#     using Documenter: doctest
-#     doctest(ChunkSplitters)
-# end
+@testitem "Doctests" begin
+    using Documenter: doctest
+    doctest(ChunkSplitters)
+end
 
 @testitem "BatchSplit" setup = [Testing] begin
     using OffsetArrays: OffsetArray
