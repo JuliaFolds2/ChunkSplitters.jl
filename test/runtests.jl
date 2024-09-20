@@ -314,13 +314,13 @@ end
     end
 end
 
-@testitem "Minimial interface" begin
-    struct MinimalInterface end
-    Base.firstindex(::MinimalInterface) = 1
-    Base.lastindex(::MinimalInterface) = 7
-    Base.length(::MinimalInterface) = 7
-    ChunkSplitters.is_chunkable(::MinimalInterface) = true
-    x = MinimalInterface()
+@testitem "Custom types" begin
+    struct CustomType end
+    Base.firstindex(::CustomType) = 1
+    Base.lastindex(::CustomType) = 7
+    Base.length(::CustomType) = 7
+    ChunkSplitters.is_chunkable(::CustomType) = true
+    x = CustomType()
     @test collect(chunk_indices(x; n=3)) == [1:3, 4:5, 6:7]
     @test collect(enumerate(chunk_indices(x; n=3))) == [(1, 1:3), (2, 4:5), (3, 6:7)]
     @test eltype(enumerate(chunk_indices(x; n=3))) == Tuple{Int64,UnitRange{Int}}
@@ -330,11 +330,11 @@ end
     @test eltype(enumerate(chunk_indices(x; n=3, split=ScatterSplit()))) == Tuple{Int64,StepRange{Int64,Int64}}
 
     @test_throws MethodError collect(chunk(x; n=3))
-    Base.view(m::MinimalInterface, I::UnitRange{Int64}) = MinimalInterface()
-    @test collect(chunk(x; n=3)) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
+    Base.view(m::CustomType, I::UnitRange{Int64}) = CustomType()
+    @test collect(chunk(x; n=3)) == [CustomType(), CustomType(), CustomType()]
     @test_throws MethodError collect(chunk(x; n=3, split=ScatterSplit()))
-    Base.view(m::MinimalInterface, I::StepRange{Int64,Int64}) = MinimalInterface()
-    @test collect(chunk(x; n=3, split=ScatterSplit())) == [MinimalInterface(), MinimalInterface(), MinimalInterface()]
+    Base.view(m::CustomType, I::StepRange{Int64,Int64}) = CustomType()
+    @test collect(chunk(x; n=3, split=ScatterSplit())) == [CustomType(), CustomType(), CustomType()]
 end
 
 @testitem "empty input" begin

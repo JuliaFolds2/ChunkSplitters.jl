@@ -9,7 +9,7 @@ makedocs(
         "Home" => "index.md",
         "Getting started" => "gettingstarted.md",
         "Multithreading" => "multithreading.md",
-        "Minimal interface" => "minimalinterface.md",
+        "Custom types" => "customtypes.md",
         "References" => "references.md",
     ]
 )

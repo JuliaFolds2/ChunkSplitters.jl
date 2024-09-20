@@ -76,7 +76,7 @@ function err_mutually_exclusive(var1, var2)
     throw(ArgumentError("$var1 and $var2 are mutually exclusive."))
 end
 function err_not_chunkable(::T) where {T}
-    throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or if it is compatible with the chunks minimal interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
+    throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or implement the custom type interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
 end
 
 firstindex(::ChunksIterator) = 1
