@@ -1,4 +1,4 @@
-OhMyThreads.jl Changelog
+ChunkSplitters.jl Changelog
 =========================
 
 Version 3.0.0
