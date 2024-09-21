@@ -159,3 +159,33 @@ With `Consecutive()`, chunks are "filled up" with indices/elements one after ano
 With `RoundRobin()`, indices or elements are scattered across chunks in a round-robin fashion. The first index/element goes to the first chunk, the second index/element goes to the second chunk, and so on, until we run out of chunks and continue with the first chunk again.
 
 ![split strategies](./assets/splitting_arrows.svg)
+
+```jldoctest
+julia> using ChunkSplitters
+
+julia> x = [1.2, 3.4, 5.6, 7.8, 9.1, 10.11, 11.12];
+
+julia> collect(chunk_indices(x; n=3, split=Consecutive()))
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:5
+ 6:7
+
+julia> collect(chunk_indices(x; n=3, split=RoundRobin()))
+3-element Vector{StepRange{Int64, Int64}}:
+ 1:3:7
+ 2:3:5
+ 3:3:6
+
+julia> collect(chunk(x; n=3, split=Consecutive()))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
+ [1.2, 3.4, 5.6]
+ [7.8, 9.1]
+ [10.11, 11.12]
+
+julia> collect(chunk(x; n=3, split=RoundRobin()))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{StepRange{Int64, Int64}}, true}}:
+ [1.2, 7.8, 11.12]
+ [3.4, 9.1]
+ [5.6, 10.11]
+```
