@@ -18,6 +18,6 @@ chunk
 
 ```@docs
 Split
-BatchSplit
-ScatterSplit
+Consecutive
+RoundRobin
 ```

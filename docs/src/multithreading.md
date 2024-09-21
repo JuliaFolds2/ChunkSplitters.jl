@@ -141,7 +141,7 @@ julia> xs = 1:512
 
 julia> f_nonuniform(x) = sum(abs2, rand() for _ in 1:(2^14*x))
 
-julia> function parallel_sum(f, x; n=nthreads(), split=BatchSplit())
+julia> function parallel_sum(f, x; n=nthreads(), split=Consecutive())
            tasks = map(chunk(x; n=n, split=split)) do c
                @spawn sum(f, c)
            end
@@ -178,28 +178,28 @@ We notice that, up to some point, increasing the number of tasks beyond `nthread
 
 From this we learn that, in general, a balance must be found between more tasks (→ better load balancing) and not too many tasks (→ fewer allocations and less overhead).
 
-## "Load balancing" via `ScatterSplit`
+## "Load balancing" via `RoundRobin`
 
-Apart from increasing the number of tasks/chunks to improve *dynamic* load balancing, we can also *statically* distribute the workload more efficiently among tasks by choosing `split=ScatterSplit()`. This way, each task/chunk will get workload from everywhere along the linear curve plotted above. This effectively leads to better balancing of the load.
+Apart from increasing the number of tasks/chunks to improve *dynamic* load balancing, we can also *statically* distribute the workload more efficiently among tasks by choosing `split=RoundRobin()`. This way, each task/chunk will get workload from everywhere along the linear curve plotted above. This effectively leads to better balancing of the load.
 
 Let's demonstrate and benchmark this effect for the case `n=nthreads()`, which, essentially, corresponds to turned off *dynamic* load balancing.
 
 ```julia-repl
-julia> @btime parallel_sum($f_nonuniform, $xs; n=nthreads(), split=BatchSplit());
+julia> @btime parallel_sum($f_nonuniform, $xs; n=nthreads(), split=Consecutive());
   857.914 ms (44 allocations: 3.36 KiB)
 
-julia> @btime parallel_sum($f_nonuniform, $xs; n=nthreads(), split=ScatterSplit());
+julia> @btime parallel_sum($f_nonuniform, $xs; n=nthreads(), split=RoundRobin());
   566.818 ms (45 allocations: 3.39 KiB)
 ```
 
-Note that with `ScatterSplit()`, we obtain a runtime that is comparable to `n=16*nthreads()` with `BatchSplit()` (dynamic load balancing, see above). At the same time, the `ScatterSplit()` variant is more efficient in terms of allocations.
+Note that with `RoundRobin()`, we obtain a runtime that is comparable to `n=16*nthreads()` with `Consecutive()` (dynamic load balancing, see above). At the same time, the `RoundRobin()` variant is more efficient in terms of allocations.
 
 ### `@threads :static`
 
-The strategy of using `ScatterSplit()` as a mean to get static load balancing also works with `@threads` and even `@threads :static`.
+The strategy of using `RoundRobin()` as a mean to get static load balancing also works with `@threads` and even `@threads :static`.
 
 ```julia-repl
-julia> function parallel_sum_atthreads(f, x; n=nthreads(), split=BatchSplit())
+julia> function parallel_sum_atthreads(f, x; n=nthreads(), split=Consecutive())
            psums = zeros(Float64, n)
            @threads :static for (i, c) in enumerate(chunk(x; n=n, split=split))
                psums[i] = sum(f, c)
@@ -207,9 +207,9 @@ julia> function parallel_sum_atthreads(f, x; n=nthreads(), split=BatchSplit())
            return sum(psums)
        end
 
-julia> @btime parallel_sum_atthreads($f_nonuniform, $xs; n=nthreads(), split=BatchSplit());
+julia> @btime parallel_sum_atthreads($f_nonuniform, $xs; n=nthreads(), split=Consecutive());
   850.475 ms (35 allocations: 3.53 KiB)
 
-julia> @btime parallel_sum_atthreads($f_nonuniform, $xs; n=nthreads(), split=ScatterSplit());
+julia> @btime parallel_sum_atthreads($f_nonuniform, $xs; n=nthreads(), split=RoundRobin());
   567.175 ms (35 allocations: 3.53 KiB)
 ```
