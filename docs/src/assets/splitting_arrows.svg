@@ -7,8 +7,8 @@
    viewBox="0 0 154.17873 73.814216"
    version="1.1"
    id="svg8"
-   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
-   sodipodi:docname="splitters.svg"
+   inkscape:version="1.2.2 (b0a84865, 2022-12-01)"
+   sodipodi:docname="splitting_arrows.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -249,14 +249,14 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.8381481"
-     inkscape:cx="279.90127"
-     inkscape:cy="207.00181"
+     inkscape:cx="280.4453"
+     inkscape:cy="207.27383"
      inkscape:document-units="mm"
      inkscape:current-layer="g5707"
      showgrid="false"
-     inkscape:window-width="1664"
-     inkscape:window-height="976"
-     inkscape:window-x="10"
+     inkscape:window-width="2540"
+     inkscape:window-height="1366"
+     inkscape:window-x="2570"
      inkscape:window-y="35"
      inkscape:window-maximized="0"
      fit-margin-top="0"
@@ -470,25 +470,25 @@
       <text
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:6.92044px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.173011"
-         x="-446.91324"
+         x="-456.2124"
          y="53.807182"
          id="text5363"><tspan
            sodipodi:role="line"
            id="tspan5361"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:JuliaMono;-inkscape-font-specification:JuliaMono;stroke-width:0.173011"
-           x="-446.91324"
-           y="53.807182">:batch</tspan></text>
+           x="-456.2124"
+           y="53.807182">Consecutive()</tspan></text>
       <text
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:6.92044px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.173011"
-         x="-375.89395"
+         x="-382.86832"
          y="53.807182"
          id="text5500"><tspan
            sodipodi:role="line"
            id="tspan5498"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:JuliaMono;-inkscape-font-specification:JuliaMono;stroke-width:0.173011"
-           x="-375.89395"
-           y="53.807182">:scatter</tspan></text>
+           x="-382.86832"
+           y="53.807182">RoundRobin()</tspan></text>
       <text
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:6.92044px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.173011"
