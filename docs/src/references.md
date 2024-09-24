@@ -10,7 +10,7 @@ Order   = [:function, :type]
 ## Iterators
 
 ```@docs
-chunk_indices
+index_chunks
 chunk
 ```
 

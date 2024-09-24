@@ -3,7 +3,7 @@ module ChunkSplitters
 include("api.jl")
 include("internals.jl")
 
-export chunk_indices, chunk
+export index_chunks, chunks
 export Split, Consecutive, RoundRobin
 
 if VERSION >= v"1.11.0-DEV.469"

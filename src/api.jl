@@ -1,5 +1,5 @@
 """
-    chunk_indices(collection;
+    index_chunks(collection;
         n::Union{Nothing, Integer}=nothing,
         size::Union{Nothing, Integer}=nothing,
         [split::Split=Consecutive(),]
@@ -10,7 +10,7 @@ Returns an iterator that splits the *indices* of `collection` into
 `n`-many chunks (if `n` is given) or into chunks of a certain size (if `size` is given).
 The returned iterator can be used to process chunks of *indices* of `collection` one after
 another. If you want to process chunks of *elements* of `collection`,
-check out `chunk(...)` instead.
+check out `chunks(...)` instead.
 
 The keyword arguments `n` and `size` are mutually exclusive.
 
@@ -30,7 +30,7 @@ The keyword arguments `n` and `size` are mutually exclusive.
 ### Noteworthy
 
 If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
-`enumerate(chunk_indices(...))` can be used in conjuction with `@threads`.
+`enumerate(index_chunks(...))` can be used in conjuction with `@threads`.
 
 ### Requirements
 
@@ -46,29 +46,29 @@ julia> using ChunkSplitters
 
 julia> x = rand(7);
 
-julia> collect(chunk_indices(x; n=3))
+julia> collect(index_chunks(x; n=3))
 3-element Vector{UnitRange{Int64}}:
  1:3
  4:5
  6:7
 
-julia> collect(enumerate(chunk_indices(x; n=3)))
+julia> collect(enumerate(index_chunks(x; n=3)))
 3-element Vector{Tuple{Int64, UnitRange{Int64}}}:
  (1, 1:3)
  (2, 4:5)
  (3, 6:7)
 
-julia> collect(chunk_indices(1:7; size=3))
+julia> collect(index_chunks(1:7; size=3))
 3-element Vector{UnitRange{Int64}}:
  1:3
  4:6
  7:7
 ```
 """
-function chunk_indices end
+function index_chunks end
 
 """
-    chunk(collection;
+    chunks(collection;
         n::Union{Nothing, Integer}=nothing,
         size::Union{Nothing, Integer}=nothing,
         [split::Split=Consecutive(),]
@@ -80,7 +80,7 @@ Returns an iterator that splits the *elements* of `collection` into
 To avoid copies, chunks will generally hold a view into the original collection.
 The returned iterator can be used to process chunks of *elements* of `collection` one after
 another. If you want to process chunks of *indices* of `collection`,
-check out `chunk_indices(...)` instead.
+check out `index_chunks(...)` instead.
 
 The keyword arguments `n` and `size` are mutually exclusive.
 
@@ -100,11 +100,11 @@ The keyword arguments `n` and `size` are mutually exclusive.
 ### Noteworthy
 
 If you need a running chunk index you can combine `chunks` with `enumerate`. In particular,
-`enumerate(chunk(...))` can be used in conjuction with `@threads`.
+`enumerate(chunks(...))` can be used in conjuction with `@threads`.
 
 ### Requirements
 
-In addition to the requirements for `chunk_indices` (see docstring), the type of the input
+In addition to the requirements for `index_chunks` (see docstring), the type of the input
 `collection` must have an implementation of `view`, especially
 `view(::typeof(collection), ::UnitRange)` and `view(::typeof(collection), ::StepRange)`.
 Out of the box, `AbstractArray`s and `Tuple`s are supported.
@@ -116,37 +116,37 @@ julia> using ChunkSplitters
 
 julia> x = [1.2, 3.4, 5.6, 7.8, 9.0];
 
-julia> collect(chunk(x; n=3))
+julia> collect(chunks(x; n=3))
 3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
  [1.2, 3.4]
  [5.6, 7.8]
  [9.0]
 
-julia> collect(enumerate(chunk(x; n=3)))
+julia> collect(enumerate(chunks(x; n=3)))
 3-element Vector{Tuple{Int64, SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}}:
  (1, [1.2, 3.4])
  (2, [5.6, 7.8])
  (3, [9.0])
 
-julia> collect(chunk(x; size=3))
+julia> collect(chunks(x; size=3))
 2-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
  [1.2, 3.4, 5.6]
  [7.8, 9.0]
 ```
 """
-function chunk end
+function chunks end
 
 """
     is_chunkable(::T)::Bool
 
-Returns `true` if an object of type `T` can be chunked with `chunk`/`chunk_indices`.
+Returns `true` if an object of type `T` can be chunked with `chunks`/`index_chunks`.
 Overload this function for your custom types if that type is linearly indexable and
 supports `firstindex`, `lastindex`, and `length`.
 """
 function is_chunkable end
 
 """
-Subtypes can be used to indicate a splitting strategy for `chunk` and `chunk_indices`
+Subtypes can be used to indicate a splitting strategy for `chunks` and `index_chunks`
 (`split` keyword argument).
 """
 abstract type Split end

@@ -1,6 +1,6 @@
 # Multithreading
 
-The iterators `chunk` and `chunk_indices` can be very useful in combination with `@spawn` and `@threads` for task-based multithreading. Let's see how we can use them together.
+The iterators `chunks` and `index_chunks` can be very useful in combination with `@spawn` and `@threads` for task-based multithreading. Let's see how we can use them together.
 
 ## Example: Parallel summation
 
@@ -10,7 +10,7 @@ julia> using ChunkSplitters: chunk
 julia> using Base.Threads: nthreads, @spawn
 
 julia> function parallel_sum(f, x; n=nthreads())
-           tasks = map(chunk(x; n=n)) do c
+           tasks = map(chunks(x; n=n)) do c
                @spawn sum(f, c)
            end
            return sum(fetch, tasks)
@@ -50,9 +50,9 @@ Lastly, as we'll discuss further down below, the ability to control the elements
 
 ## `@threads` and `enumerate`
 
-If you try to rewrite the parallel summation example above and try to use `@threads` instead of `@spawn` you might realize that it won't work by just using `chunk` alone. The reason is that we need to store the partial (chunk-)sums in a vector and to write to the correct slots of this vector, we need a chunk index in each task.
+If you try to rewrite the parallel summation example above and try to use `@threads` instead of `@spawn` you might realize that it won't work by just using `chunks` alone. The reason is that we need to store the partial (chunk-)sums in a vector and to write to the correct slots of this vector, we need a chunk index in each task.
 
-The natural solution is to use `enumerate(chunk(...))`, which will give us the necessary chunk indices besides the chunks. And in fact, this works:
+The natural solution is to use `enumerate(chunks(...))`, which will give us the necessary chunk indices besides the chunks. And in fact, this works:
 
 ```julia-repl
 julia> using ChunkSplitters: chunk
@@ -61,7 +61,7 @@ julia> using Base.Threads: nthreads, @threads
 
 julia> function parallel_sum(f, x; n=nthreads())
            psums = Vector{eltype(x)}(undef, n)
-           @threads for (i, c) in enumerate(chunk(x; n=n))
+           @threads for (i, c) in enumerate(chunks(x; n=n))
                psums[i] = sum(f, c)
            end
            return sum(psums)
@@ -142,7 +142,7 @@ julia> xs = 1:512
 julia> f_nonuniform(x) = sum(abs2, rand() for _ in 1:(2^14*x))
 
 julia> function parallel_sum(f, x; n=nthreads(), split=Consecutive())
-           tasks = map(chunk(x; n=n, split=split)) do c
+           tasks = map(chunks(x; n=n, split=split)) do c
                @spawn sum(f, c)
            end
            return sum(fetch, tasks)
@@ -201,7 +201,7 @@ The strategy of using `RoundRobin()` as a mean to get static load balancing also
 ```julia-repl
 julia> function parallel_sum_atthreads(f, x; n=nthreads(), split=Consecutive())
            psums = zeros(Float64, n)
-           @threads :static for (i, c) in enumerate(chunk(x; n=n, split=split))
+           @threads :static for (i, c) in enumerate(chunks(x; n=n, split=split))
                psums[i] = sum(f, c)
            end
            return sum(psums)

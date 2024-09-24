@@ -1,7 +1,7 @@
 module Internals
 
 using ChunkSplitters: Split, Consecutive, RoundRobin
-import ChunkSplitters: chunk_indices, chunk, is_chunkable
+import ChunkSplitters: index_chunks, chunks, is_chunkable
 import Base: iterate, length, eltype, enumerate, firstindex, lastindex, getindex, eachindex
 
 abstract type Constraint end
@@ -27,7 +27,7 @@ function ChunksIterator(s::Split, r::ReturnType; collection, n=nothing, size=not
 end
 
 # public API
-function chunk_indices(collection;
+function index_chunks(collection;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Split=Consecutive(),
@@ -37,7 +37,7 @@ function chunk_indices(collection;
 end
 
 # public API
-function chunk(collection;
+function chunks(collection;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Split=Consecutive(),

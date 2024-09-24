@@ -12,14 +12,14 @@ julia> using ChunkSplitters
 
 julia> x = [1.2, 3.4, 5.6, 7.8, 9.1, 10.11, 11.12];
 
-julia> for inds in chunk_indices(x; n=3)
+julia> for inds in index_chunks(x; n=3)
            @show inds
        end
 inds = 1:3
 inds = 4:5
 inds = 6:7
 
-julia> for c in chunk(x; n=3)
+julia> for c in chunks(x; n=3)
            @show c
        end
 c = [1.2, 3.4, 5.6]
@@ -31,7 +31,7 @@ This can be useful in many areas, one of which is multithreading, where we can u
 
 ```julia
 function parallel_sum(x; ntasks=nthreads())
-    tasks = map(chunk(x; n=ntasks)) do chunk_of_x
+    tasks = map(chunks(x; n=ntasks)) do chunk_of_x
         @spawn sum(chunk_of_x)
     end
     return sum(fetch, tasks)
