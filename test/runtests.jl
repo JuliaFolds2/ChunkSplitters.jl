@@ -224,15 +224,19 @@ end
     @test eachindex(enumerate(chunks(2:10; n=3, split=RoundRobin()))) == 1:3
 end
 
-@testitem "ChunksIterator parametric types order" begin
-    # Try not to break the order of the type parameters. ChunksIterator is
-    # not public, but its being used by OhMyThreads.
-    using ChunkSplitters.Internals: ChunksIterator
-    using ChunkSplitters.Internals: FixedCount, Consecutive, ReturnIndices, ReturnViews
-    @test ChunksIterator{typeof(1:7),FixedCount,Consecutive,ReturnIndices}(1:7, 3, 0) ==
-          ChunksIterator{UnitRange{Int64},FixedCount,Consecutive,ReturnIndices}(1:7, 3, 0)
-    @test ChunksIterator{typeof(1:7),FixedCount,Consecutive,ReturnViews}(1:7, 3, 0) ==
-          ChunksIterator{UnitRange{Int64},FixedCount,Consecutive,ReturnViews}(1:7, 3, 0)
+@testitem "ChunksIterators: parametric types order" begin
+    # Try not to break the order of the type parameters. The ChunksIterators are
+    # not public, but they're being used by OhMyThreads.
+    using ChunkSplitters.Internals: ViewChunksIterator, IndexChunksIterator
+    using ChunkSplitters.Internals: FixedCount, Consecutive
+    @test IndexChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          IndexChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test IndexChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          IndexChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test ViewChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          ViewChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test ViewChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          ViewChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
 end
 
 @testitem "indexing" begin
