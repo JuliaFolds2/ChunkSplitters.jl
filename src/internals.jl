@@ -106,16 +106,12 @@ eltype(::IndexChunksIterator{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
 eltype(c::ViewChunksIterator{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
 eltype(c::ViewChunksIterator{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
 
-function iterate(c::AbstractChunksIterator{T,C,S}, state=nothing) where {T,C,S}
-    length(c.collection) == 0 && return nothing
-    if isnothing(state)
-        chunk = c[1]
-        return (chunk, 1)
-    elseif state < length(c)
-        chunk = c[state+1]
-        return (chunk, state + 1)
+function iterate(c::AbstractChunksIterator, state=firstindex(c))
+    if state > lastindex(c)
+        return nothing
+    else
+        return @inbounds(c[state]), state + 1
     end
-    return nothing
 end
 
 # Usually enumerate is not compatible
