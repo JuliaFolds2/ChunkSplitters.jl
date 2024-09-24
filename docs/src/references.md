@@ -11,7 +11,7 @@ Order   = [:function, :type]
 
 ```@docs
 index_chunks
-chunk
+chunks
 ```
 
 ## Splitting strategies
