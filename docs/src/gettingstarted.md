@@ -46,17 +46,17 @@ inds = 7:7
 
 Note that if `n` is set, chunks will have the most even distribution of sizes possible. If `size` is set, chunks will have the same size, except, possibly, the very last chunk.
 
-When using `n`, we also support a `minchunksize` keyword argument that allows you to set a desired minimum chunk size. This will soften the effect of `n` and will decrease the number of chunks if the size of each chunk is too small.
+When using `n`, we also support a `minsize` keyword argument that allows you to set a desired minimum chunk size. This will soften the effect of `n` and will decrease the number of chunks if the size of each chunk is too small.
 
  ```jldoctest; setup=:(using ChunkSplitters; x = [1.2, 3.4, 5.6, 7.8, 9.1, 10.11, 11.12];)
-julia> collect(index_chunks(x; n=5, minchunksize=2))
+julia> collect(index_chunks(x; n=5, minsize=2))
 3-element Vector{UnitRange{Int64}}:
  1:3
  4:5
  6:7
 ```
 
-Note how only three chunks were created, because the `minchunksize` option took precedence over `n`.
+Note how only three chunks were created, because the `minsize` option took precedence over `n`.
 
 ## Enumeration
 

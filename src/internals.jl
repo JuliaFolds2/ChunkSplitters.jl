@@ -21,19 +21,19 @@ struct IndexChunks{T,C<:Constraint,S<:Split} <: AbstractChunksIterator{T,C,S}
     size::Int
 end
 
-function ViewChunks(s::Split; collection, n=nothing, size=nothing, minchunksize=nothing)
+function ViewChunks(s::Split; collection, n=nothing, size=nothing, minsize=nothing)
     is_chunkable(collection) || err_not_chunkable(collection)
     isnothing(n) && isnothing(size) && err_missing_input()
     !isnothing(size) && !isnothing(n) && err_mutually_exclusive("size", "n")
-    C, n, size = _set_C_n_size(collection, n, size, minchunksize)
+    C, n, size = _set_C_n_size(collection, n, size, minsize)
     return ViewChunks{typeof(collection),C,typeof(s)}(collection, n, size)
 end
 
-function IndexChunks(s::Split; collection, n=nothing, size=nothing, minchunksize=nothing)
+function IndexChunks(s::Split; collection, n=nothing, size=nothing, minsize=nothing)
     is_chunkable(collection) || err_not_chunkable(collection)
     isnothing(n) && isnothing(size) && err_missing_input()
     !isnothing(size) && !isnothing(n) && err_mutually_exclusive("size", "n")
-    C, n, size = _set_C_n_size(collection, n, size, minchunksize)
+    C, n, size = _set_C_n_size(collection, n, size, minsize)
     return IndexChunks{typeof(collection),C,typeof(s)}(collection, n, size)
 end
 
@@ -42,9 +42,9 @@ function index_chunks(collection;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Split=Consecutive(),
-    minchunksize::Union{Nothing,Integer}=nothing,
+    minsize::Union{Nothing,Integer}=nothing,
 )
-    return IndexChunks(split; collection, n, size, minchunksize)
+    return IndexChunks(split; collection, n, size, minsize)
 end
 
 # public API
@@ -52,9 +52,9 @@ function chunks(collection;
     n::Union{Nothing,Integer}=nothing,
     size::Union{Nothing,Integer}=nothing,
     split::Split=Consecutive(),
-    minchunksize::Union{Nothing,Integer}=nothing,
+    minsize::Union{Nothing,Integer}=nothing,
 )
-    return ViewChunks(split; collection, n, size, minchunksize)
+    return ViewChunks(split; collection, n, size, minsize)
 end
 
 # public API
@@ -63,19 +63,19 @@ is_chunkable(::AbstractArray) = true
 is_chunkable(::Tuple) = true
 is_chunkable(::AbstractChunksIterator) = true
 
-_set_minchunksize(minchunksize::Nothing) = 1
-function _set_minchunksize(minchunksize::Integer)
-    minchunksize < 1 && throw(ArgumentError("minchunksize must be >= 1"))
-    return minchunksize
+_set_minsize(minsize::Nothing) = 1
+function _set_minsize(minsize::Integer)
+    minsize < 1 && throw(ArgumentError("minsize must be >= 1"))
+    return minsize
 end
-function _set_C_n_size(collection, n::Nothing, size::Integer, minchunksize)
-    !isnothing(minchunksize) && err_mutually_exclusive("size", "minchunksize")
+function _set_C_n_size(collection, n::Nothing, size::Integer, minsize)
+    !isnothing(minsize) && err_mutually_exclusive("size", "minsize")
     size < 1 && throw(ArgumentError("size must be >= 1"))
     return FixedSize, 0, size
 end
-function _set_C_n_size(collection, n::Integer, size::Nothing, minchunksize)
+function _set_C_n_size(collection, n::Integer, size::Nothing, minsize)
     n < 1 && throw(ArgumentError("n must be >= 1"))
-    mcs = _set_minchunksize(minchunksize)
+    mcs = _set_minsize(minsize)
     nmax = min(length(collection) ÷ mcs, n)
     FixedCount, nmax, 0
 end

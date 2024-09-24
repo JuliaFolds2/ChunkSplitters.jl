@@ -309,11 +309,11 @@ end
                 local c = f(1:l; size=s)
                 @test all(length(c[i]) == length(c[i+1]) for i in 1:length(c)-2) # only the last chunk may have different length
             end
-            @test collect(f(1:10; n=2, minchunksize=2)) == [1:5, 6:10]
-            @test collect(f(1:10; n=5, minchunksize=3)) == [1:4, 5:7, 8:10]
-            @test collect(f(1:11; n=10, minchunksize=3)) == [1:4, 5:8, 9:11]
-            @test_throws ArgumentError f(1:10; n=2, minchunksize=0)
-            @test_throws ArgumentError f(1:10; size=2, minchunksize=2)
+            @test collect(f(1:10; n=2, minsize=2)) == [1:5, 6:10]
+            @test collect(f(1:10; n=5, minsize=3)) == [1:4, 5:7, 8:10]
+            @test collect(f(1:11; n=10, minsize=3)) == [1:4, 5:8, 9:11]
+            @test_throws ArgumentError f(1:10; n=2, minsize=0)
+            @test_throws ArgumentError f(1:10; size=2, minsize=2)
         end
     end
 end

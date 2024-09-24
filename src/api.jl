@@ -3,7 +3,7 @@
         n::Union{Nothing, Integer}=nothing,
         size::Union{Nothing, Integer}=nothing,
         [split::Split=Consecutive(),]
-        [minchunksize::Union{Nothing,Integer}=nothing,]
+        [minsize::Union{Nothing,Integer}=nothing,]
     )
 
 Returns an iterator that splits the *indices* of `collection` into
@@ -22,10 +22,10 @@ The keyword arguments `n` and `size` are mutually exclusive.
   approximately the same number of indices (as far as possible).
   If `split = RoundRobin()`, indices will be assigned to chunks in a round-robin fashion.
 
-* `minchunksize` can be used to specify the minimum size of a chunk,
+* `minsize` can be used to specify the minimum size of a chunk,
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
-  are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
-  each chunk is at least `minchunksize` long.
+  are smaller than `minsize`, the number of chunks will be decreased to ensure that
+  each chunk is at least `minsize` long.
 
 ### Noteworthy
 
@@ -72,7 +72,7 @@ function index_chunks end
         n::Union{Nothing, Integer}=nothing,
         size::Union{Nothing, Integer}=nothing,
         [split::Split=Consecutive(),]
-        [minchunksize::Union{Nothing,Integer}=nothing,]
+        [minsize::Union{Nothing,Integer}=nothing,]
     )
 
 Returns an iterator that splits the *elements* of `collection` into
@@ -92,10 +92,10 @@ The keyword arguments `n` and `size` are mutually exclusive.
   approximately the same number of elements (as far as possible).
   If `split = RoundRobin()`, elements will be assigned to chunks in a round-robin fashion.
 
-* `minchunksize` can be used to specify the minimum size of a chunk,
+* `minsize` can be used to specify the minimum size of a chunk,
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
-  are smaller than `minchunksize`, the number of chunks will be decreased to ensure that
-  each chunk is at least `minchunksize` long.
+  are smaller than `minsize`, the number of chunks will be decreased to ensure that
+  each chunk is at least `minsize` long.
 
 ### Noteworthy
 
