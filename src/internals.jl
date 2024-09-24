@@ -9,32 +9,32 @@ struct FixedSize <: Constraint end
 
 abstract type AbstractChunksIterator{T,C<:Constraint,S<:Split} end
 
-struct ViewChunksIterator{T,C<:Constraint,S<:Split} <: AbstractChunksIterator{T,C,S}
+struct ViewChunks{T,C<:Constraint,S<:Split} <: AbstractChunksIterator{T,C,S}
     collection::T
     n::Int
     size::Int
 end
 
-struct IndexChunksIterator{T,C<:Constraint,S<:Split} <: AbstractChunksIterator{T,C,S}
+struct IndexChunks{T,C<:Constraint,S<:Split} <: AbstractChunksIterator{T,C,S}
     collection::T
     n::Int
     size::Int
 end
 
-function ViewChunksIterator(s::Split; collection, n=nothing, size=nothing, minchunksize=nothing)
+function ViewChunks(s::Split; collection, n=nothing, size=nothing, minchunksize=nothing)
     is_chunkable(collection) || err_not_chunkable(collection)
     isnothing(n) && isnothing(size) && err_missing_input()
     !isnothing(size) && !isnothing(n) && err_mutually_exclusive("size", "n")
     C, n, size = _set_C_n_size(collection, n, size, minchunksize)
-    return ViewChunksIterator{typeof(collection),C,typeof(s)}(collection, n, size)
+    return ViewChunks{typeof(collection),C,typeof(s)}(collection, n, size)
 end
 
-function IndexChunksIterator(s::Split; collection, n=nothing, size=nothing, minchunksize=nothing)
+function IndexChunks(s::Split; collection, n=nothing, size=nothing, minchunksize=nothing)
     is_chunkable(collection) || err_not_chunkable(collection)
     isnothing(n) && isnothing(size) && err_missing_input()
     !isnothing(size) && !isnothing(n) && err_mutually_exclusive("size", "n")
     C, n, size = _set_C_n_size(collection, n, size, minchunksize)
-    return IndexChunksIterator{typeof(collection),C,typeof(s)}(collection, n, size)
+    return IndexChunks{typeof(collection),C,typeof(s)}(collection, n, size)
 end
 
 # public API
@@ -44,7 +44,7 @@ function index_chunks(collection;
     split::Split=Consecutive(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
-    return IndexChunksIterator(split; collection, n, size, minchunksize)
+    return IndexChunks(split; collection, n, size, minchunksize)
 end
 
 # public API
@@ -54,7 +54,7 @@ function chunks(collection;
     split::Split=Consecutive(),
     minchunksize::Union{Nothing,Integer}=nothing,
 )
-    return ViewChunksIterator(split; collection, n, size, minchunksize)
+    return ViewChunks(split; collection, n, size, minchunksize)
 end
 
 # public API
@@ -97,13 +97,13 @@ Base.lastindex(c::AbstractChunksIterator) = length(c)
 Base.length(c::AbstractChunksIterator{T,FixedCount,S}) where {T,S} = c.n
 Base.length(c::AbstractChunksIterator{T,FixedSize,S}) where {T,S} = cld(length(c.collection), max(1, c.size))
 
-Base.getindex(c::IndexChunksIterator{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
-Base.getindex(c::ViewChunksIterator{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
+Base.getindex(c::IndexChunks{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
+Base.getindex(c::ViewChunks{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
 
-Base.eltype(::IndexChunksIterator{T,C,Consecutive}) where {T,C} = UnitRange{Int}
-Base.eltype(::IndexChunksIterator{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
-Base.eltype(c::ViewChunksIterator{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
-Base.eltype(c::ViewChunksIterator{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
+Base.eltype(::IndexChunks{T,C,Consecutive}) where {T,C} = UnitRange{Int}
+Base.eltype(::IndexChunks{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
+Base.eltype(c::ViewChunks{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
+Base.eltype(c::ViewChunks{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
 
 function Base.iterate(c::AbstractChunksIterator, state=firstindex(c))
     if state > lastindex(c)

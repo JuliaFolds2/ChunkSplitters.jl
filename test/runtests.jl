@@ -227,16 +227,16 @@ end
 @testitem "ChunksIterators: parametric types order" begin
     # Try not to break the order of the type parameters. The ChunksIterators are
     # not public, but they're being used by OhMyThreads.
-    using ChunkSplitters.Internals: ViewChunksIterator, IndexChunksIterator
+    using ChunkSplitters.Internals: ViewChunks, IndexChunks
     using ChunkSplitters.Internals: FixedCount, Consecutive
-    @test IndexChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
-          IndexChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
-    @test IndexChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
-          IndexChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
-    @test ViewChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
-          ViewChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
-    @test ViewChunksIterator{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
-          ViewChunksIterator{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test IndexChunks{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          IndexChunks{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test IndexChunks{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          IndexChunks{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test ViewChunks{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          ViewChunks{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
+    @test ViewChunks{typeof(1:7),FixedCount,Consecutive}(1:7, 3, 0) ==
+          ViewChunks{UnitRange{Int64},FixedCount,Consecutive}(1:7, 3, 0)
 end
 
 @testitem "indexing" begin
