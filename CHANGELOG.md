@@ -7,6 +7,7 @@ Version 3.0.0
 - ![BREAKING][badge-breaking] The old main API function `chunks` has been renamed to `index_chunks`.
 - ![BREAKING][badge-breaking] A new function `chunks` has been introduced that returns an iterator that provides chunks of **elements** rather than chunks of **indices** of a given input collection. To avoid copies, it is based on `view`.
 - ![BREAKING][badge-breaking] For performance reasons, the `split` keyword option now requires a `Split` instead of a `Symbol`. Concretely, `:batch` should be replaced by `Consecutive()` and `:scatter` should be replaced by `RoundRobin()`.
+- ![BREAKING][badge-breaking] The keyword argument `minchunksize` has been renamed to `minsize`.
 - ![BREAKING][badge-breaking] `getchunk` isn't public API anymore (and has, internally, been renamed to `getchunkindices`). If you really need a replacement, consider using `index_chunks(...)[i]` instead.
 - ![BREAKING][badge-breaking] The old legacy API that relied on positional rather than keyword arguments has been dropped.
 
