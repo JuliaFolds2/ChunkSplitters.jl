@@ -2,7 +2,6 @@ module Internals
 
 using ChunkSplitters: Split, Consecutive, RoundRobin
 import ChunkSplitters: index_chunks, chunks, is_chunkable
-import Base: iterate, length, eltype, enumerate, firstindex, lastindex, getindex, eachindex
 
 abstract type Constraint end
 struct FixedCount <: Constraint end
@@ -91,22 +90,22 @@ function err_not_chunkable(::T) where {T}
     throw(ArgumentError("Arguments of type $T are not compatible with chunks, either implement a custom chunks method for your type, or implement the custom type interface (see https://juliafolds2.github.io/ChunkSplitters.jl/dev/)"))
 end
 
-firstindex(::AbstractChunksIterator) = 1
+Base.firstindex(::AbstractChunksIterator) = 1
 
-lastindex(c::AbstractChunksIterator) = length(c)
+Base.lastindex(c::AbstractChunksIterator) = length(c)
 
-length(c::AbstractChunksIterator{T,FixedCount,S}) where {T,S} = c.n
-length(c::AbstractChunksIterator{T,FixedSize,S}) where {T,S} = cld(length(c.collection), max(1, c.size))
+Base.length(c::AbstractChunksIterator{T,FixedCount,S}) where {T,S} = c.n
+Base.length(c::AbstractChunksIterator{T,FixedSize,S}) where {T,S} = cld(length(c.collection), max(1, c.size))
 
-getindex(c::IndexChunksIterator{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
-getindex(c::ViewChunksIterator{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
+Base.getindex(c::IndexChunksIterator{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
+Base.getindex(c::ViewChunksIterator{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
 
-eltype(::IndexChunksIterator{T,C,Consecutive}) where {T,C} = UnitRange{Int}
-eltype(::IndexChunksIterator{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
-eltype(c::ViewChunksIterator{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
-eltype(c::ViewChunksIterator{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
+Base.eltype(::IndexChunksIterator{T,C,Consecutive}) where {T,C} = UnitRange{Int}
+Base.eltype(::IndexChunksIterator{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
+Base.eltype(c::ViewChunksIterator{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
+Base.eltype(c::ViewChunksIterator{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
 
-function iterate(c::AbstractChunksIterator, state=firstindex(c))
+function Base.iterate(c::AbstractChunksIterator, state=firstindex(c))
     if state > lastindex(c)
         return nothing
     else
@@ -122,9 +121,9 @@ end
 struct Enumerate{I<:AbstractChunksIterator}
     itr::I
 end
-enumerate(c::AbstractChunksIterator) = Enumerate(c)
+Base.enumerate(c::AbstractChunksIterator) = Enumerate(c)
 
-function iterate(ec::Enumerate{<:AbstractChunksIterator}, state=nothing)
+function Base.iterate(ec::Enumerate{<:AbstractChunksIterator}, state=nothing)
     length(ec.itr.collection) == 0 && return nothing
     if isnothing(state)
         chunk = ec.itr[1]
@@ -137,18 +136,18 @@ function iterate(ec::Enumerate{<:AbstractChunksIterator}, state=nothing)
     return nothing
 end
 
-eltype(ec::Enumerate{<:AbstractChunksIterator{T,C,Consecutive}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
-eltype(ec::Enumerate{<:AbstractChunksIterator{T,C,RoundRobin}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
+Base.eltype(ec::Enumerate{<:AbstractChunksIterator{T,C,Consecutive}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
+Base.eltype(ec::Enumerate{<:AbstractChunksIterator{T,C,RoundRobin}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
 
-firstindex(::Enumerate{<:AbstractChunksIterator}) = 1
+Base.firstindex(::Enumerate{<:AbstractChunksIterator}) = 1
 
-lastindex(ec::Enumerate{<:AbstractChunksIterator}) = lastindex(ec.itr)
+Base.lastindex(ec::Enumerate{<:AbstractChunksIterator}) = lastindex(ec.itr)
 
-getindex(ec::Enumerate{<:AbstractChunksIterator}, i::Int) = (i, ec.itr[i])
+Base.getindex(ec::Enumerate{<:AbstractChunksIterator}, i::Int) = (i, ec.itr[i])
 
-length(ec::Enumerate{<:AbstractChunksIterator}) = length(ec.itr)
+Base.length(ec::Enumerate{<:AbstractChunksIterator}) = length(ec.itr)
 
-eachindex(ec::Enumerate{<:AbstractChunksIterator}) = Base.OneTo(length(ec.itr))
+Base.eachindex(ec::Enumerate{<:AbstractChunksIterator}) = Base.OneTo(length(ec.itr))
 
 _empty_itr(::Type{Consecutive}) = 0:-1
 _empty_itr(::Type{RoundRobin}) = 0:1:-1
