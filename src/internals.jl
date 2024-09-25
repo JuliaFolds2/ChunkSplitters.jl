@@ -123,17 +123,12 @@ struct Enumerate{I<:AbstractChunksIterator}
 end
 Base.enumerate(c::AbstractChunksIterator) = Enumerate(c)
 
-function Base.iterate(ec::Enumerate{<:AbstractChunksIterator}, state=nothing)
-    length(ec.itr.collection) == 0 && return nothing
-    if isnothing(state)
-        chunk = ec.itr[1]
-        return ((1, chunk), 1)
-    elseif state < length(ec.itr)
-        state = state + 1
-        chunk = ec.itr[state]
-        return ((state, chunk), state)
+function Base.iterate(ec::Enumerate{<:AbstractChunksIterator}, state=firstindex(ec.itr))
+    if state > lastindex(ec.itr)
+        return nothing
+    else
+        return ((state, @inbounds(ec.itr[state])), state + 1)
     end
-    return nothing
 end
 
 Base.eltype(ec::Enumerate{<:AbstractChunksIterator{T,C,Consecutive}}) where {T,C} = Tuple{Int,eltype(ec.itr)}
