@@ -16,7 +16,7 @@ julia> import Pkg; Pkg.add("ChunkSplitters")
 
 Go to: [https://JuliaFolds2.github.io/ChunkSplitters.jl](https://JuliaFolds2.github.io/ChunkSplitters.jl)
 
-## Quick view
+## Overview
 
 [ChunkSplitters.jl](https://github.com/JuliaFolds2/ChunkSplitters.jl) makes it easy to split the elements or indices of a collection into chunks:
 
