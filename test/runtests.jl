@@ -409,9 +409,11 @@ end
         x = rand(10^3)
         b = @benchmark $f_chunks($x; n=4) samples = 1 evals = 1
         @test b.allocs == 0
+        b = @benchmark $f_chunks($x; size=10) samples = 1 evals = 1
         if VERSION >= v"1.10"
-            b = @benchmark $f_chunks($x; size=10) samples = 1 evals = 1
             @test b.allocs == 0
+        else
+            @test_broken b.allocs == 0
         end
     end
 end
