@@ -5,6 +5,19 @@
 
 # ChunkSplitters.jl
 
+## Installation
+
+Install with:
+```julia
+julia> import Pkg; Pkg.add("ChunkSplitters")
+```
+
+## Documentation
+
+Go to: [https://JuliaFolds2.github.io/ChunkSplitters.jl](https://JuliaFolds2.github.io/ChunkSplitters.jl)
+
+## Quick view
+
 [ChunkSplitters.jl](https://github.com/JuliaFolds2/ChunkSplitters.jl) makes it easy to split the elements or indices of a collection into chunks:
 
 ```julia-repl
@@ -39,14 +52,3 @@ end
 ```
 
 Working with chunks and their respective indices also improves thread-safety compared to a naive parallelisation approach based on `threadid()` (see [PSA: Thread-local state is no longer recommended](https://julialang.org/blog/2023/07/PSA-dont-use-threadid/)). 
-
-## Installation
-
-Install with:
-```julia
-julia> import Pkg; Pkg.add("ChunkSplitters")
-```
-
-## Documentation
-
-Go to: [https://JuliaFolds2.github.io/ChunkSplitters.jl](https://JuliaFolds2.github.io/ChunkSplitters.jl)
