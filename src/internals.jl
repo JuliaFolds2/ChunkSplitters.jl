@@ -127,7 +127,7 @@ function Base.iterate(ec::Enumerate{<:AbstractChunksIterator}, state=firstindex(
     if state > lastindex(ec.itr)
         return nothing
     else
-        return ((state, ec.itr[state]), state + 1)
+        return ((state, @inbounds(ec.itr[state])), state + 1)
     end
 end
 
