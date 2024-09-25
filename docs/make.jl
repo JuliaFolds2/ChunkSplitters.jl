@@ -1,14 +1,15 @@
-import Pkg
-Pkg.add("Documenter")
 using Documenter
 using ChunkSplitters
-push!(LOAD_PATH,"../src/")
+
 makedocs(
     modules=[ChunkSplitters],
+    checkdocs = :exports,
     sitename="ChunkSplitters.jl",
     pages = [
         "Home" => "index.md",
-        "Load balancing" => "load_balancing.md",
+        "Getting started" => "gettingstarted.md",
+        "Multithreading" => "multithreading.md",
+        "Custom types" => "customtypes.md",
         "References" => "references.md",
     ]
 )
@@ -18,4 +19,5 @@ deploydocs(
     branch = "gh-pages",
     devbranch = "main",
     versions = ["stable" => "v^", "v#.#" ],
+    push_preview = true
 )
