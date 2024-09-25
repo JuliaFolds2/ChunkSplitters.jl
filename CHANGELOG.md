@@ -1,6 +1,11 @@
 ChunkSplitters.jl Changelog
 =========================
 
+Version 3.1.0
+-------------
+- ![INFO][badge-info] Recover support for Julia 1.6+. All tests pass from 1.9+, and an allocation test fails in 1.6.
+
+
 Version 3.0.0
 -------------
 - ![BREAKING][badge-breaking] The new lower compat bound for Julia is 1.10. This implies that support for the old LTS 1.6 has been dropped.
