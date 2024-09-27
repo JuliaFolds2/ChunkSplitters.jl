@@ -77,7 +77,7 @@ function _set_C_n_size(collection, n::Integer, size::Nothing, minsize)
     n < 1 && throw(ArgumentError("n must be >= 1"))
     mcs = _set_minsize(minsize)
     nmax = min(length(collection) ÷ mcs, n)
-    FixedCount, nmax, 0
+    return FixedCount, nmax, 0
 end
 
 function err_missing_input()
