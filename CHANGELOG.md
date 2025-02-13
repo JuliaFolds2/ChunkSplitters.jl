@@ -1,6 +1,10 @@
 ChunkSplitters.jl Changelog
 =========================
 
+Version 3.1.1
+-------------
+- ![BUGFIX][badge-bugfix] Throw an error if `minsize > length(collection)`. Before returned an empty collection of chunks.
+
 Version 3.1.0
 -------------
 - ![INFO][badge-info] Recover support for Julia 1.6+. All tests pass from 1.9+, and an allocation test fails in 1.6.
