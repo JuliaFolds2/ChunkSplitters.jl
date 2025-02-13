@@ -314,6 +314,7 @@ end
             @test collect(f(1:11; n=10, minsize=3)) == [1:4, 5:8, 9:11]
             @test_throws ArgumentError f(1:10; n=2, minsize=0)
             @test_throws ArgumentError f(1:10; size=2, minsize=2)
+            @test_throws ArgumentError f(1:10; size=2, minsize=11)
         end
     end
 end

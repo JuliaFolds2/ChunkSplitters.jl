@@ -63,9 +63,10 @@ is_chunkable(::AbstractArray) = true
 is_chunkable(::Tuple) = true
 is_chunkable(::AbstractChunks) = true
 
-_set_minsize(minsize::Nothing) = 1
-function _set_minsize(minsize::Integer)
+_set_minsize(minsize::Nothing, _) = 1
+function _set_minsize(minsize::Integer, collection_length::Integer)
     minsize < 1 && throw(ArgumentError("minsize must be >= 1"))
+    minsize > collection_length && throw(ArgumentError("minsize must be <= length(collection)"))
     return minsize
 end
 function _set_C_n_size(collection, n::Nothing, size::Integer, minsize)
@@ -75,7 +76,7 @@ function _set_C_n_size(collection, n::Nothing, size::Integer, minsize)
 end
 function _set_C_n_size(collection, n::Integer, size::Nothing, minsize)
     n < 1 && throw(ArgumentError("n must be >= 1"))
-    mcs = _set_minsize(minsize)
+    mcs = _set_minsize(minsize, length(collection))
     nmax = min(length(collection) ÷ mcs, n)
     return FixedCount, nmax, 0
 end
