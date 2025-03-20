@@ -155,7 +155,7 @@ Returns the range of indices of `collection` that corresponds to the `i`-th chun
 """
 function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S}
     length(c) == 0 && return _empty_itr(S)
-    ichunk <= length(c.collection) || throw(ArgumentError("ichunk must be less or equal to the length of the ChunksIterator"))
+#    ichunk <= length(c.collection) || throw(ArgumentError("ichunk must be less or equal to the length of the ChunksIterator"))
     if C == FixedCount
         n = c.n
         size = nothing
@@ -168,7 +168,7 @@ function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S
         size = min(l, size) # handle size>length(c.collection)
         n = cld(l, size)
     end
-    ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
+    1 <= ichunk <= n || throw(ArgumentError("chunk index out of bounds: $ichunk not in 1:$n"))
     return _getchunkindices(C, S, c.collection, ichunk; n, size)
 end
 
