@@ -126,7 +126,6 @@ struct Enumerate{I<:AbstractChunks}
     itr::I
 end
 Base.enumerate(c::AbstractChunks) = Enumerate(c)
-#Base.collect(ec::Enumerate{<:AbstractChunks{T,EmptyCollection}}) where {T} = Tuple{Int,eltype(ec.itr)}[]
 
 function Base.iterate(ec::Enumerate{<:AbstractChunks}, state=firstindex(ec.itr))
     if state > lastindex(ec.itr)
