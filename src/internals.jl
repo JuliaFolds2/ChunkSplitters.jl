@@ -6,6 +6,7 @@ import ChunkSplitters: index_chunks, chunks, is_chunkable
 abstract type Constraint end
 struct FixedCount <: Constraint end
 struct FixedSize <: Constraint end
+struct EmptyCollection <: Constraint end
 
 abstract type AbstractChunks{T,C<:Constraint,S<:Split} end
 
@@ -72,12 +73,14 @@ end
 function _set_C_n_size(collection, n::Nothing, size::Integer, minsize)
     !isnothing(minsize) && err_mutually_exclusive("size", "minsize")
     size < 1 && throw(ArgumentError("size must be >= 1"))
+    length(collection) == 0 && return EmptyCollection, 0, 0
     return FixedSize, 0, size
 end
 function _set_C_n_size(collection, n::Integer, size::Nothing, minsize)
     n < 1 && throw(ArgumentError("n must be >= 1"))
     mcs = _set_minsize(minsize, length(collection))
     nmax = min(length(collection) ÷ mcs, n)
+    length(collection) == 0 && return EmptyCollection, 0, 0
     return FixedCount, nmax, 0
 end
 
@@ -92,19 +95,26 @@ function err_not_chunkable(::T) where {T}
 end
 
 Base.firstindex(::AbstractChunks) = 1
-
 Base.lastindex(c::AbstractChunks) = length(c)
 
 Base.length(c::AbstractChunks{T,FixedCount,S}) where {T,S} = c.n
 Base.length(c::AbstractChunks{T,FixedSize,S}) where {T,S} = cld(length(c.collection), max(1, c.size))
+Base.length(c::AbstractChunks{T,EmptyCollection,S}) where {T,S} = 0
 
 Base.getindex(c::IndexChunks{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
 Base.getindex(c::ViewChunks{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
 
-Base.eltype(::IndexChunks{T,C,Consecutive}) where {T,C} = UnitRange{Int}
-Base.eltype(::IndexChunks{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
-Base.eltype(c::ViewChunks{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
-Base.eltype(c::ViewChunks{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
+Base.eltype(::IndexChunks{T,Union{FixedCount,FixedSize},Consecutive}) where {T} = UnitRange{Int}
+Base.eltype(::IndexChunks{T,Union{FixedCount,FixedSize},RoundRobin}) where {T} = StepRange{Int,Int}
+Base.eltype(c::ViewChunks{T,Union{FixedCount,FixedSize},Consecutive}) where {T} = typeof(c[firstindex(c)])
+Base.eltype(c::ViewChunks{T,Union{FixedCount,FixedSize},RoundRobin}) where {T} = typeof(c[firstindex(c)])
+
+#Base.eltype(::AbstractChunks{T,EmptyCollection,Consecutive}) where {T} = UnitRange{Int}
+#Base.eltype(::AbstractChunks{T,EmptyCollection,RoundRobin}) where {T} = StepRange{Int,Int}
+
+_empty_itr(::Type{Consecutive}) = 0:-1
+_empty_itr(::Type{RoundRobin}) = 0:1:-1
+#Base.collect(::AbstractChunks{T,EmptyCollection}) where {T} = typeof(_empty_itr(S))[]
 
 function Base.iterate(c::AbstractChunks, state=firstindex(c))
     if state > lastindex(c)
@@ -123,6 +133,7 @@ struct Enumerate{I<:AbstractChunks}
     itr::I
 end
 Base.enumerate(c::AbstractChunks) = Enumerate(c)
+#Base.collect(ec::Enumerate{<:AbstractChunks{T,EmptyCollection}}) where {T} = Tuple{Int,eltype(ec.itr)}[]
 
 function Base.iterate(ec::Enumerate{<:AbstractChunks}, state=firstindex(ec.itr))
     if state > lastindex(ec.itr)
@@ -145,17 +156,13 @@ Base.length(ec::Enumerate{<:AbstractChunks}) = length(ec.itr)
 
 Base.eachindex(ec::Enumerate{<:AbstractChunks}) = Base.OneTo(length(ec.itr))
 
-_empty_itr(::Type{Consecutive}) = 0:-1
-_empty_itr(::Type{RoundRobin}) = 0:1:-1
-
 """
     getchunkindices(c::AbstractChunks, i::Integer)
 
 Returns the range of indices of `collection` that corresponds to the `i`-th chunk.
 """
 function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S}
-    length(c) == 0 && return _empty_itr(S)
-#    ichunk <= length(c.collection) || throw(ArgumentError("ichunk must be less or equal to the length of the ChunksIterator"))
+    length(c) == 0 && (n = 0)
     if C == FixedCount
         n = c.n
         size = nothing
@@ -168,7 +175,7 @@ function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S
         size = min(l, size) # handle size>length(c.collection)
         n = cld(l, size)
     end
-    1 <= ichunk <= n || throw(ArgumentError("chunk index out of bounds: $ichunk not in 1:$n"))
+    1 <= ichunk <= n || throw(ArgumentError("chunk index out of bounds: $ichunk not in 1:$n (length=$(length(c)))"))
     return _getchunkindices(C, S, c.collection, ichunk; n, size)
 end
 
