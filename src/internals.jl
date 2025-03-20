@@ -104,17 +104,13 @@ Base.length(c::AbstractChunks{T,EmptyCollection,S}) where {T,S} = 0
 Base.getindex(c::IndexChunks{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
 Base.getindex(c::ViewChunks{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
 
-Base.eltype(::IndexChunks{T,Union{FixedCount,FixedSize},Consecutive}) where {T} = UnitRange{Int}
-Base.eltype(::IndexChunks{T,Union{FixedCount,FixedSize},RoundRobin}) where {T} = StepRange{Int,Int}
-Base.eltype(c::ViewChunks{T,Union{FixedCount,FixedSize},Consecutive}) where {T} = typeof(c[firstindex(c)])
-Base.eltype(c::ViewChunks{T,Union{FixedCount,FixedSize},RoundRobin}) where {T} = typeof(c[firstindex(c)])
-
-#Base.eltype(::AbstractChunks{T,EmptyCollection,Consecutive}) where {T} = UnitRange{Int}
-#Base.eltype(::AbstractChunks{T,EmptyCollection,RoundRobin}) where {T} = StepRange{Int,Int}
+Base.eltype(::IndexChunks{T,C,Consecutive}) where {T,C} = UnitRange{Int}
+Base.eltype(::IndexChunks{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
+Base.eltype(c::ViewChunks{T,C,Consecutive}) where {T,C} = typeof(@view(c.collection[firstindex(c.collection):lastindex(c.collection)]))
+Base.eltype(c::ViewChunks{T,C,RoundRobin}) where {T,C} = typeof(@view(c.collection[firstindex(c.collection):1:lastindex(c.collection)]))
 
 _empty_itr(::Type{Consecutive}) = 0:-1
 _empty_itr(::Type{RoundRobin}) = 0:1:-1
-#Base.collect(::AbstractChunks{T,EmptyCollection}) where {T} = typeof(_empty_itr(S))[]
 
 function Base.iterate(c::AbstractChunks, state=firstindex(c))
     if state > lastindex(c)
