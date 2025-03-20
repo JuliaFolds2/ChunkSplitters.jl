@@ -6,7 +6,6 @@ import ChunkSplitters: index_chunks, chunks, is_chunkable
 abstract type Constraint end
 struct FixedCount <: Constraint end
 struct FixedSize <: Constraint end
-struct EmptyCollection <: Constraint end
 
 abstract type AbstractChunks{T,C<:Constraint,S<:Split} end
 
@@ -73,14 +72,12 @@ end
 function _set_C_n_size(collection, n::Nothing, size::Integer, minsize)
     !isnothing(minsize) && err_mutually_exclusive("size", "minsize")
     size < 1 && throw(ArgumentError("size must be >= 1"))
-    length(collection) == 0 && return EmptyCollection, 0, 0
     return FixedSize, 0, size
 end
 function _set_C_n_size(collection, n::Integer, size::Nothing, minsize)
     n < 1 && throw(ArgumentError("n must be >= 1"))
     mcs = _set_minsize(minsize, length(collection))
     nmax = min(length(collection) ÷ mcs, n)
-    length(collection) == 0 && return EmptyCollection, 0, 0
     return FixedCount, nmax, 0
 end
 
@@ -99,7 +96,6 @@ Base.lastindex(c::AbstractChunks) = length(c)
 
 Base.length(c::AbstractChunks{T,FixedCount,S}) where {T,S} = c.n
 Base.length(c::AbstractChunks{T,FixedSize,S}) where {T,S} = cld(length(c.collection), max(1, c.size))
-Base.length(c::AbstractChunks{T,EmptyCollection,S}) where {T,S} = 0
 
 Base.getindex(c::IndexChunks{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
 Base.getindex(c::ViewChunks{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
@@ -154,18 +150,19 @@ Base.eachindex(ec::Enumerate{<:AbstractChunks}) = Base.OneTo(length(ec.itr))
 Returns the range of indices of `collection` that corresponds to the `i`-th chunk.
 """
 function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S}
-    length(c) == 0 && (n = 0)
-    if C == FixedCount
-        n = c.n
-        size = nothing
-        n >= 1 || throw(ArgumentError("n must be >= 1"))
-    elseif C == FixedSize
-        n = nothing
-        size = c.size
-        size >= 1 || throw(ArgumentError("size must be >= 1"))
-        l = length(c.collection)
-        size = min(l, size) # handle size>length(c.collection)
-        n = cld(l, size)
+    if length(c) > 0 
+        if C == FixedCount
+            n = c.n
+            size = nothing
+        elseif C == FixedSize
+            n = nothing
+            size = c.size
+            l = length(c.collection)
+            size = min(l, size) # handle size>length(c.collection)
+            n = cld(l, size)
+        end
+    else 
+        n = 0
     end
     1 <= ichunk <= n || throw(ArgumentError("chunk index out of bounds: $ichunk not in 1:$n (length=$(length(c)))"))
     return _getchunkindices(C, S, c.collection, ichunk; n, size)
