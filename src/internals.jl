@@ -109,9 +109,6 @@ Base.eltype(::IndexChunks{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
 Base.eltype(c::ViewChunks{T,C,Consecutive}) where {T,C} = typeof(@view(c.collection[firstindex(c.collection):lastindex(c.collection)]))
 Base.eltype(c::ViewChunks{T,C,RoundRobin}) where {T,C} = typeof(@view(c.collection[firstindex(c.collection):1:lastindex(c.collection)]))
 
-_empty_itr(::Type{Consecutive}) = 0:-1
-_empty_itr(::Type{RoundRobin}) = 0:1:-1
-
 function Base.iterate(c::AbstractChunks, state=firstindex(c))
     if state > lastindex(c)
         return nothing
