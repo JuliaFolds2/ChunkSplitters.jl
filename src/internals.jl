@@ -164,7 +164,7 @@ function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S
     else 
         n = 0
     end
-    1 <= ichunk <= n || throw(ArgumentError("chunk index out of bounds: $ichunk not in 1:$n (length=$(length(c)))"))
+    1 <= ichunk <= n || throw(BoundsError(c, ichunk))
     return _getchunkindices(C, S, c.collection, ichunk; n, size)
 end
 

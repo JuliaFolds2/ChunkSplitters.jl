@@ -142,8 +142,8 @@ end
             @test_throws ArgumentError f(1:10; n=5, size=2)
             @test_throws ArgumentError f(1:10; n=5, size=20)
             @test_throws TypeError f(1:10; n=2, split=:scatter) # not supported anymore
-            @test_throws ArgumentError f(0:-1; n=2)[1]
-            @test_throws ArgumentError f(1:10; n=2)[3]
+            @test_throws BoundsError f(0:-1; n=2)[1]
+            @test_throws BoundsError f(1:10; n=2)[3]
         end
     end
 end
