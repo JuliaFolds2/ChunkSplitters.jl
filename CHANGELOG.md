@@ -3,12 +3,9 @@ ChunkSplitters.jl Changelog
 
 Version 3.1.2
 -------------
-- ![BUGFIX][badge-bugfix] Indexing chunk iterators returns out-of-bounds error if the iterator is empty now (previously returned an empty range). 
-
-Version 3.1.2
--------------
 - ![ENHANCEMENT][badge-enhancement] Return a single chunk if `minsize > length(collection)`.
-
+- ![BUGFIX][badge-bugfix] Indexing chunk iterators returns out-of-bounds error if the iterator is empty now (previously returned an empty range).
+  
 Version 3.1.1
 -------------
 - ![BUGFIX][badge-bugfix] Throw an error if `minsize > length(collection)`. Before returned an empty collection of chunks.
