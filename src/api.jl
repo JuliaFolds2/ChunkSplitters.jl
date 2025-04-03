@@ -98,7 +98,7 @@ The keyword arguments `n` and `size` are mutually exclusive.
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
   are smaller than `minsize`, the number of chunks will be decreased to ensure that
   each chunk is at least `minsize` long. By default, `minsize == 1` when the keyword
-  is set to `nothing`.If `minsize` is greater than the length of the
+  is set to `nothing`. If `minsize` is greater than the length of the
   collection, there will be only one chunk.
 
 ### Noteworthy
