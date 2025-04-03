@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Multithreading · ChunkSplitters.jl</title><meta name="title" content="Multithreading · ChunkSplitters.jl"/><meta property="og:title" content="Multithreading · ChunkSplitters.jl"/><meta property="twitter:title" content="Multithreading · ChunkSplitters.jl"/><meta name="description" content="Documentation for ChunkSplitters.jl."/><meta property="og:description" content="Documentation for ChunkSplitters.jl."/><meta property="twitter:description" content="Documentation for ChunkSplitters.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="ChunkSplitters.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">ChunkSplitters.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../gettingstarted/">Getting started</a></li><li class="is-active"><a class="tocitem" href>Multithreading</a><ul class="internal"><li><a class="tocitem" href="#Example:-Parallel-summation"><span>Example: Parallel summation</span></a></li><li><a class="tocitem" href="#@threads-and-enumerate"><span><code>@threads</code> and <code>enumerate</code></span></a></li><li><a class="tocitem" href="#Dynamic-load-balancing"><span>Dynamic load balancing</span></a></li><li><a class="tocitem" href="#&quot;Load-balancing&quot;-via-RoundRobin"><span>&quot;Load balancing&quot; via <code>RoundRobin</code></span></a></li></ul></li><li><a class="tocitem" href="../customtypes/">Custom types</a></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Multithreading</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Multithreading</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaFolds2/ChunkSplitters.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaFolds2/ChunkSplitters.jl/blob/main/docs/src/multithreading.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Multithreading"><a class="docs-heading-anchor" href="#Multithreading">Multithreading</a><a id="Multithreading-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreading" title="Permalink"></a></h1><p>The iterators <code>chunks</code> and <code>index_chunks</code> can be very useful in combination with <code>@spawn</code> and <code>@threads</code> for task-based multithreading. Let&#39;s see how we can use them together.</p><h2 id="Example:-Parallel-summation"><a class="docs-heading-anchor" href="#Example:-Parallel-summation">Example: Parallel summation</a><a id="Example:-Parallel-summation-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-Parallel-summation" title="Permalink"></a></h2><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters: chunk
+
+julia&gt; using Base.Threads: nthreads, @spawn
+
+julia&gt; function parallel_sum(f, x; n=nthreads())
+           tasks = map(chunks(x; n=n)) do c
+               @spawn sum(f, c)
+           end
+           return sum(fetch, tasks)
+       end
+parallel_sum (generic function with 1 method)
+
+julia&gt; x = rand(10^5);
+
+julia&gt; parallel_sum(identity, x) ≈ sum(identity, x) # true
+true
+
+julia&gt; using BenchmarkTools
+
+julia&gt; @btime sum(x -&gt; log(x)^7, $x);
+
+  938.583 μs (0 allocations: 0 bytes)
+
+julia&gt; @btime parallel_sum(x -&gt; log(x)^7, $x; n=Threads.nthreads());
+  321.083 μs (44 allocations: 3.42 KiB)</code></pre><p>Note that by chunking <code>x</code> we can readily control how many tasks we will use for the parallelisation. One reason why this is useful is that we can reduce the (large) overhead that we would have to pay if we would simply spawn <code>length(x)</code> tasks:</p><pre><code class="language-julia-repl hljs">julia&gt; @btime parallel_sum(x -&gt; log(x)^7, $x; n=length(x)); # equivalent no chunking
+  40.259 ms (700006 allocations: 54.17 MiB)</code></pre><p>Another reason why chunking is useful is that by setting <code>n &lt;= nthreads()</code> we can make <code>parallel_sum</code> use only a subset of the available Julia threads:</p><pre><code class="language-julia-repl hljs">julia&gt; @btime parallel_sum(x -&gt; log(x)^7, $x; n=2); # use only 2 tasks/threads
+  506.875 μs (16 allocations: 1.20 KiB)</code></pre><p>Lastly, as we&#39;ll discuss further down below, the ability to control the elements-to-task mapping allows you to tune load-balancing for non-uniform workload.</p><h2 id="@threads-and-enumerate"><a class="docs-heading-anchor" href="#@threads-and-enumerate"><code>@threads</code> and <code>enumerate</code></a><a id="@threads-and-enumerate-1"></a><a class="docs-heading-anchor-permalink" href="#@threads-and-enumerate" title="Permalink"></a></h2><p>If you try to rewrite the parallel summation example above and try to use <code>@threads</code> instead of <code>@spawn</code> you might realize that it won&#39;t work by just using <code>chunks</code> alone. The reason is that we need to store the partial (chunk-)sums in a vector and to write to the correct slots of this vector, we need a chunk index in each task.</p><p>The natural solution is to use <code>enumerate(chunks(...))</code>, which will give us the necessary chunk indices besides the chunks. And in fact, this works:</p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters: chunk
+
+julia&gt; using Base.Threads: nthreads, @threads
+
+julia&gt; function parallel_sum(f, x; n=nthreads())
+           psums = Vector{eltype(x)}(undef, n)
+           @threads for (i, c) in enumerate(chunks(x; n=n))
+               psums[i] = sum(f, c)
+           end
+           return sum(psums)
+       end
+parallel_sum (generic function with 1 method)
+
+julia&gt; x = rand(10^5);
+
+julia&gt; parallel_sum(identity, x) ≈ sum(identity, x) # true
+true
+
+julia&gt; using BenchmarkTools
+
+julia&gt; @btime sum(x -&gt; log(x)^7, $x);
+  936.625 μs (0 allocations: 0 bytes)
+
+julia&gt; @btime parallel_sum(x -&gt; log(x)^7, $x; n=Threads.nthreads());
+  319.000 μs (35 allocations: 3.42 KiB)</code></pre><p>However, the fact that this works is that we actively support it. In general, <code>@threads</code> isn&#39;t compatible with <code>enumerate</code>:</p><pre><code class="language-julia-repl hljs">julia&gt; @threads for (i, x) in enumerate(1:10)
+           @show i, x
+       end
+ERROR: TaskFailedException
+
+    nested task error: MethodError: no method matching firstindex(::Base.Iterators.Enumerate{UnitRange{Int64}})
+    
+[...]</code></pre><h2 id="Dynamic-load-balancing"><a class="docs-heading-anchor" href="#Dynamic-load-balancing">Dynamic load balancing</a><a id="Dynamic-load-balancing-1"></a><a class="docs-heading-anchor-permalink" href="#Dynamic-load-balancing" title="Permalink"></a></h2><p>Consider the following function:</p><pre><code class="language-julia hljs">f_nonuniform(x) = sum(abs2, rand() for _ in 1:(2^14*x))</code></pre><p>The workload and computational cost of <code>f_nonuniform(x)</code> is non-uniform and increases linearly with <code>x</code>:</p><pre><code class="language-julia-repl hljs">julia&gt; xs = 1:2^7;
+
+julia&gt; workload = 2^14 .* xs;
+
+julia&gt; lineplot(xs, workload; xlabel=&quot;x&quot;, ylabel=&quot;∝ workload of f_nonuniform(x)&quot;, xlim=(1,2^7), ylim=(minimum(ys), maximum(ys)))
+                                           ┌────────────────────────────────────────┐ 
+                                 2 097 152 │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠔⠋│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⠚⠁⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠖⠉⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠴⠋⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡤⠚⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠔⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠔⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+   ∝ workload of f_nonuniform(x)           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⠊⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠔⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠔⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡤⠚⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⠀⠀⠀⣠⠖⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⠀⠀⠀⣀⠴⠊⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           │⠀⠀⢀⡤⠊⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                    16 384 │⣠⠔⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀│ 
+                                           └────────────────────────────────────────┘ 
+                                           ⠀1⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀128⠀ 
+                                           ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀x⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ </code></pre><p>Let&#39;s now reconsider our <code>parallel_sum</code> implementation from above and see how it can handle the non-uniformity of the workload for different values of <code>n</code>.</p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters, Base.Threads, BenchmarkTools
+
+julia&gt; xs = 1:512
+
+julia&gt; f_nonuniform(x) = sum(abs2, rand() for _ in 1:(2^14*x))
+
+julia&gt; function parallel_sum(f, x; n=nthreads(), split=Consecutive())
+           tasks = map(chunks(x; n=n, split=split)) do c
+               @spawn sum(f, c)
+           end
+           return sum(fetch, tasks)
+       end
+parallel_sum (generic function with 1 method)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=nthreads());
+  861.248 ms (45 allocations: 3.39 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=2*nthreads());
+  683.033 ms (86 allocations: 6.59 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=4*nthreads());
+  638.611 ms (170 allocations: 13.06 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=8*nthreads());
+  585.203 ms (338 allocations: 26.02 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=16*nthreads());
+  567.806 ms (674 allocations: 51.88 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=32*nthreads());
+  557.139 ms (1346 allocations: 103.67 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=64*nthreads());
+  556.886 ms (2690 allocations: 207.33 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=128*nthreads());
+  558.612 ms (3586 allocations: 276.33 KiB)</code></pre><p>We notice that, up to some point, increasing the number of tasks beyond <code>nthreads()</code> improves the runtime. The reason is that we give the dynamic scheduler more freedom to dynamically balance the increasing number tasks/chunks among threads. Compare this to <code>n=nthreads()</code>, where there is only one task/chunk per thread and no flexibility for load balancing at all. On the other hand, we can also see the downside of creating more tasks: the number and size of allocations increases.</p><p>From this we learn that, in general, a balance must be found between more tasks (→ better load balancing) and not too many tasks (→ fewer allocations and less overhead).</p><h2 id="&quot;Load-balancing&quot;-via-RoundRobin"><a class="docs-heading-anchor" href="#&quot;Load-balancing&quot;-via-RoundRobin">&quot;Load balancing&quot; via <code>RoundRobin</code></a><a id="&quot;Load-balancing&quot;-via-RoundRobin-1"></a><a class="docs-heading-anchor-permalink" href="#&quot;Load-balancing&quot;-via-RoundRobin" title="Permalink"></a></h2><p>Apart from increasing the number of tasks/chunks to improve <em>dynamic</em> load balancing, we can also <em>statically</em> distribute the workload more efficiently among tasks by choosing <code>split=RoundRobin()</code>. This way, each task/chunk will get workload from everywhere along the linear curve plotted above. This effectively leads to better balancing of the load.</p><p>Let&#39;s demonstrate and benchmark this effect for the case <code>n=nthreads()</code>, which, essentially, corresponds to turned off <em>dynamic</em> load balancing.</p><pre><code class="language-julia-repl hljs">julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=nthreads(), split=Consecutive());
+  857.914 ms (44 allocations: 3.36 KiB)
+
+julia&gt; @btime parallel_sum($f_nonuniform, $xs; n=nthreads(), split=RoundRobin());
+  566.818 ms (45 allocations: 3.39 KiB)</code></pre><p>Note that with <code>RoundRobin()</code>, we obtain a runtime that is comparable to <code>n=16*nthreads()</code> with <code>Consecutive()</code> (dynamic load balancing, see above). At the same time, the <code>RoundRobin()</code> variant is more efficient in terms of allocations.</p><h3 id="@threads-:static"><a class="docs-heading-anchor" href="#@threads-:static"><code>@threads :static</code></a><a id="@threads-:static-1"></a><a class="docs-heading-anchor-permalink" href="#@threads-:static" title="Permalink"></a></h3><p>The strategy of using <code>RoundRobin()</code> as a mean to get static load balancing also works with <code>@threads</code> and even <code>@threads :static</code>.</p><pre><code class="language-julia-repl hljs">julia&gt; function parallel_sum_atthreads(f, x; n=nthreads(), split=Consecutive())
+           psums = zeros(Float64, n)
+           @threads :static for (i, c) in enumerate(chunks(x; n=n, split=split))
+               psums[i] = sum(f, c)
+           end
+           return sum(psums)
+       end
+
+julia&gt; @btime parallel_sum_atthreads($f_nonuniform, $xs; n=nthreads(), split=Consecutive());
+  850.475 ms (35 allocations: 3.53 KiB)
+
+julia&gt; @btime parallel_sum_atthreads($f_nonuniform, $xs; n=nthreads(), split=RoundRobin());
+  567.175 ms (35 allocations: 3.53 KiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../gettingstarted/">« Getting started</a><a class="docs-footer-nextpage" href="../customtypes/">Custom types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.1 on <span class="colophon-date" title="Thursday 3 April 2025 12:19">Thursday 3 April 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
