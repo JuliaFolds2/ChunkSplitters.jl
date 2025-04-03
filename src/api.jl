@@ -25,7 +25,8 @@ The keyword arguments `n` and `size` are mutually exclusive.
 * `minsize` can be used to specify the minimum size of a chunk,
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
   are smaller than `minsize`, the number of chunks will be decreased to ensure that
-  each chunk is at least `minsize` long.
+  each chunk is at least `minsize` long. By default, `minsize == 1` when the keyword
+  is set to `nothing`.
 
 ### Noteworthy
 
@@ -95,7 +96,8 @@ The keyword arguments `n` and `size` are mutually exclusive.
 * `minsize` can be used to specify the minimum size of a chunk,
   and can be used in combination with the `n` keyword. If, for the given `n`, the chunks
   are smaller than `minsize`, the number of chunks will be decreased to ensure that
-  each chunk is at least `minsize` long.
+  each chunk is at least `minsize` long.  By default, `minsize == 1` when the keyword
+  is set to `nothing`.
 
 ### Noteworthy
 

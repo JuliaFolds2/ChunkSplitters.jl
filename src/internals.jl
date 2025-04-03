@@ -92,7 +92,6 @@ function err_not_chunkable(::T) where {T}
 end
 
 Base.firstindex(::AbstractChunks) = 1
-
 Base.lastindex(c::AbstractChunks) = length(c)
 
 Base.length(c::AbstractChunks{T,FixedCount,S}) where {T,S} = c.n
@@ -103,8 +102,8 @@ Base.getindex(c::ViewChunks{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[g
 
 Base.eltype(::IndexChunks{T,C,Consecutive}) where {T,C} = UnitRange{Int}
 Base.eltype(::IndexChunks{T,C,RoundRobin}) where {T,C} = StepRange{Int,Int}
-Base.eltype(c::ViewChunks{T,C,Consecutive}) where {T,C} = typeof(c[firstindex(c)])
-Base.eltype(c::ViewChunks{T,C,RoundRobin}) where {T,C} = typeof(c[firstindex(c)])
+Base.eltype(c::ViewChunks{T,C,Consecutive}) where {T,C} = typeof(@view(c.collection[firstindex(c.collection):lastindex(c.collection)]))
+Base.eltype(c::ViewChunks{T,C,RoundRobin}) where {T,C} = typeof(@view(c.collection[firstindex(c.collection):1:lastindex(c.collection)]))
 
 function Base.iterate(c::AbstractChunks, state=firstindex(c))
     if state > lastindex(c)
@@ -145,30 +144,27 @@ Base.length(ec::Enumerate{<:AbstractChunks}) = length(ec.itr)
 
 Base.eachindex(ec::Enumerate{<:AbstractChunks}) = Base.OneTo(length(ec.itr))
 
-_empty_itr(::Type{Consecutive}) = 0:-1
-_empty_itr(::Type{RoundRobin}) = 0:1:-1
-
 """
     getchunkindices(c::AbstractChunks, i::Integer)
 
 Returns the range of indices of `collection` that corresponds to the `i`-th chunk.
 """
 function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S}
-    length(c) == 0 && return _empty_itr(S)
-    ichunk <= length(c.collection) || throw(ArgumentError("ichunk must be less or equal to the length of the ChunksIterator"))
-    if C == FixedCount
-        n = c.n
-        size = nothing
-        n >= 1 || throw(ArgumentError("n must be >= 1"))
-    elseif C == FixedSize
-        n = nothing
-        size = c.size
-        size >= 1 || throw(ArgumentError("size must be >= 1"))
-        l = length(c.collection)
-        size = min(l, size) # handle size>length(c.collection)
-        n = cld(l, size)
+    if length(c) > 0 
+        if C == FixedCount
+            n = c.n
+            size = nothing
+        elseif C == FixedSize
+            n = nothing
+            size = c.size
+            l = length(c.collection)
+            size = min(l, size) # handle size>length(c.collection)
+            n = cld(l, size)
+        end
+    else 
+        n = 0
     end
-    ichunk <= n || throw(ArgumentError("index must be less or equal to number of chunks ($n)"))
+    1 <= ichunk <= n || throw(BoundsError(c, ichunk))
     return _getchunkindices(C, S, c.collection, ichunk; n, size)
 end
 
