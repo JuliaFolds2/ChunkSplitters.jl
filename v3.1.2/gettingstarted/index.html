@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting started · ChunkSplitters.jl</title><meta name="title" content="Getting started · ChunkSplitters.jl"/><meta property="og:title" content="Getting started · ChunkSplitters.jl"/><meta property="twitter:title" content="Getting started · ChunkSplitters.jl"/><meta name="description" content="Documentation for ChunkSplitters.jl."/><meta property="og:description" content="Documentation for ChunkSplitters.jl."/><meta property="twitter:description" content="Documentation for ChunkSplitters.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="ChunkSplitters.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">ChunkSplitters.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Getting started</a><ul class="internal"><li><a class="tocitem" href="#index_chunks-and-chunks"><span><code>index_chunks</code> and <code>chunks</code></span></a></li><li><a class="tocitem" href="#Enumeration"><span>Enumeration</span></a></li><li><a class="tocitem" href="#Indexing"><span>Indexing</span></a></li><li><a class="tocitem" href="#Return-types"><span>Return types</span></a></li><li><a class="tocitem" href="#Non-standard-arrays"><span>Non-standard arrays</span></a></li><li><a class="tocitem" href="#Splitting-strategy"><span>Splitting strategy</span></a></li></ul></li><li><a class="tocitem" href="../multithreading/">Multithreading</a></li><li><a class="tocitem" href="../customtypes/">Custom types</a></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Getting started</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Getting started</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaFolds2/ChunkSplitters.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaFolds2/ChunkSplitters.jl/blob/main/docs/src/gettingstarted.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Getting-started"><a class="docs-heading-anchor" href="#Getting-started">Getting started</a><a id="Getting-started-1"></a><a class="docs-heading-anchor-permalink" href="#Getting-started" title="Permalink"></a></h1><h2 id="index_chunks-and-chunks"><a class="docs-heading-anchor" href="#index_chunks-and-chunks"><code>index_chunks</code> and <code>chunks</code></a><a id="index_chunks-and-chunks-1"></a><a class="docs-heading-anchor-permalink" href="#index_chunks-and-chunks" title="Permalink"></a></h2><p>The two main API functions are <a href="../customtypes/#index_chunks"><code>index_chunks</code></a> and <a href="../customtypes/#chunks"><code>chunks</code></a>. They return iterators that split the <em>indices</em> or <em>elements</em> of a given collection into chunks. But it&#39;s easiest to just consider an explicit example.</p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters
+
+julia&gt; x = [1.2, 3.4, 5.6, 7.8, 9.1, 10.11, 11.12];
+
+julia&gt; for inds in index_chunks(x; n=3)
+           @show inds
+       end
+inds = 1:3
+inds = 4:5
+inds = 6:7
+
+julia&gt; for c in chunks(x; n=3)
+           @show c
+       end
+c = [1.2, 3.4, 5.6]
+c = [7.8, 9.1]
+c = [10.11, 11.12]</code></pre><p>Because we have set <code>n=3</code>, we will get three chunks. Alternatively, we can use <code>size</code> to specify the desired chunk size (the number of chunks will be computed).</p><pre><code class="language-julia-repl hljs">julia&gt; for c in chunks(x; size=2)
+           @show c
+       end
+c = [1.2, 3.4]
+c = [5.6, 7.8]
+c = [9.1, 10.11]
+c = [11.12]
+
+julia&gt; for inds in index_chunks(x; size=2)
+           @show inds
+       end
+inds = 1:2
+inds = 3:4
+inds = 5:6
+inds = 7:7</code></pre><p>Note that if <code>n</code> is set, chunks will have the most even distribution of sizes possible. If <code>size</code> is set, chunks will have the same size, except, possibly, the very last chunk.</p><p>When using <code>n</code>, we also support a <code>minsize</code> keyword argument that allows you to set a desired minimum chunk size. This will soften the effect of <code>n</code> and will decrease the number of chunks if the size of each chunk is too small.</p><pre><code class="language-julia-repl hljs">julia&gt; collect(index_chunks(x; n=5, minsize=2))
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:5
+ 6:7</code></pre><p>Note how only three chunks were created, because the <code>minsize</code> option took precedence over <code>n</code>.</p><h2 id="Enumeration"><a class="docs-heading-anchor" href="#Enumeration">Enumeration</a><a id="Enumeration-1"></a><a class="docs-heading-anchor-permalink" href="#Enumeration" title="Permalink"></a></h2><p>If we need a running chunk index, we can combine <code>index_chunks</code> and <code>chunks</code> with <code>enumerate</code>:</p><pre><code class="language-julia-repl hljs">julia&gt; for (i, inds) in enumerate(index_chunks(x; n=3))
+           @show i, inds
+       end
+(i, inds) = (1, 1:3)
+(i, inds) = (2, 4:5)
+(i, inds) = (3, 6:7)
+
+julia&gt; for (i, c) in enumerate(chunks(x; n=3))
+           @show i, c
+       end
+(i, c) = (1, [1.2, 3.4, 5.6])
+(i, c) = (2, [7.8, 9.1])
+(i, c) = (3, [10.11, 11.12])</code></pre><h2 id="Indexing"><a class="docs-heading-anchor" href="#Indexing">Indexing</a><a id="Indexing-1"></a><a class="docs-heading-anchor-permalink" href="#Indexing" title="Permalink"></a></h2><p>Apart from iterating over <code>chunks</code> or <code>index_chunks</code>, you can also index into the resulting iterators:</p><pre><code class="language-julia-repl hljs">julia&gt; index_chunks(x; n=4)[1]
+1:2
+
+julia&gt; index_chunks(x; n=4)[2]
+3:4
+
+julia&gt; chunks(x; n=4)[1]
+2-element view(::Vector{Float64}, 1:2) with eltype Float64:
+ 1.2
+ 3.4
+
+julia&gt; chunks(x; n=4)[2]
+2-element view(::Vector{Float64}, 3:4) with eltype Float64:
+ 5.6
+ 7.8</code></pre><h2 id="Return-types"><a class="docs-heading-anchor" href="#Return-types">Return types</a><a id="Return-types-1"></a><a class="docs-heading-anchor-permalink" href="#Return-types" title="Permalink"></a></h2><p>To avoid unnecessary copies, <code>chunks</code> tries to return views into the original data. For our input (<code>Vector{Float64}</code>) chunks will be <code>SubArray</code>s:</p><pre><code class="language-julia-repl hljs">julia&gt; eltype(chunks(x; n=3))
+SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}
+
+julia&gt; collect(chunks(x; n=3))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
+ [1.2, 3.4, 5.6]
+ [7.8, 9.1]
+ [10.11, 11.12]</code></pre><p>For <code>index_chunks</code> we generally get (cheap) ranges:</p><pre><code class="language-julia-repl hljs">julia&gt; eltype(index_chunks(x; n=3))
+UnitRange{Int64}
+
+julia&gt; collect(index_chunks(x; n=3))
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:5
+ 6:7</code></pre><h2 id="Non-standard-arrays"><a class="docs-heading-anchor" href="#Non-standard-arrays">Non-standard arrays</a><a id="Non-standard-arrays-1"></a><a class="docs-heading-anchor-permalink" href="#Non-standard-arrays" title="Permalink"></a></h2><p>Generally, we try to support most/all <code>AbstractArray</code>s. For example, <code>OffsetArray</code>s work just fine.</p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters, OffsetArrays
+
+julia&gt; y = OffsetArray(1:7, -1:5);
+
+julia&gt; collect(index_chunks(y; n=3))
+3-element Vector{UnitRange{Int64}}:
+ -1:1
+ 2:3
+ 4:5
+
+julia&gt; collect(chunks(y; n=3))
+3-element Vector{SubArray{Int64, 1, OffsetVector{Int64, UnitRange{Int64}}, Tuple{UnitRange{Int64}}, true}}:
+ [1, 2, 3]
+ [4, 5]
+ [6, 7]</code></pre><h2 id="Splitting-strategy"><a class="docs-heading-anchor" href="#Splitting-strategy">Splitting strategy</a><a id="Splitting-strategy-1"></a><a class="docs-heading-anchor-permalink" href="#Splitting-strategy" title="Permalink"></a></h2><p>Both <code>index_chunks</code> and <code>chunks</code> take an optional keyword argument <code>split</code> that you can use to determine how the input collection is split into chunks. We support to strategies: <code>Consecutive()</code> (default) and <code>RoundRobin()</code>.</p><p>With <code>Consecutive()</code>, chunks are &quot;filled up&quot; with indices/elements one after another. They will consist of <strong>consecutive</strong> indices/elements will hold approximately the same number of indices/elements (as far as possible). Note that this is unlike <code>Iterators.partition</code>.</p><p>With <code>RoundRobin()</code>, indices or elements are scattered across chunks in a round-robin fashion. The first index/element goes to the first chunk, the second index/element goes to the second chunk, and so on, until we run out of chunks and continue with the first chunk again.</p><p><img src="../assets/splitting_arrows.svg" alt="split strategies"/></p><pre><code class="language-julia-repl hljs">julia&gt; using ChunkSplitters
+
+julia&gt; x = [1.2, 3.4, 5.6, 7.8, 9.1, 10.11, 11.12];
+
+julia&gt; collect(index_chunks(x; n=3, split=Consecutive()))
+3-element Vector{UnitRange{Int64}}:
+ 1:3
+ 4:5
+ 6:7
+
+julia&gt; collect(index_chunks(x; n=3, split=RoundRobin()))
+3-element Vector{StepRange{Int64, Int64}}:
+ 1:3:7
+ 2:3:5
+ 3:3:6
+
+julia&gt; collect(chunks(x; n=3, split=Consecutive()))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}}:
+ [1.2, 3.4, 5.6]
+ [7.8, 9.1]
+ [10.11, 11.12]
+
+julia&gt; collect(chunks(x; n=3, split=RoundRobin()))
+3-element Vector{SubArray{Float64, 1, Vector{Float64}, Tuple{StepRange{Int64, Int64}}, true}}:
+ [1.2, 7.8, 11.12]
+ [3.4, 9.1]
+ [5.6, 10.11]</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../multithreading/">Multithreading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.1 on <span class="colophon-date" title="Thursday 3 April 2025 12:59">Thursday 3 April 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
