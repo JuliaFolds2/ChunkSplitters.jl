@@ -66,8 +66,7 @@ is_chunkable(::AbstractChunks) = true
 _set_minsize(minsize::Nothing, _) = 1
 function _set_minsize(minsize::Integer, collection_length::Integer)
     minsize < 1 && throw(ArgumentError("minsize must be >= 1"))
-    minsize > collection_length && throw(ArgumentError("minsize must be <= length(collection)"))
-    return minsize
+    return max(min(minsize, collection_length), 1)
 end
 function _set_C_n_size(collection, n::Nothing, size::Integer, minsize)
     !isnothing(minsize) && err_mutually_exclusive("size", "minsize")
