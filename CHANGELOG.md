@@ -1,5 +1,9 @@
 ChunkSplitters.jl Changelog
-=========================
+===========================
+
+Version 3.1.2
+-------------
+- ![BUGFIX][badge-bugfix] Indexing chunk iterators returns out-of-bounds error if the iterator is empty now (previously returned an empty range). 
 
 Version 3.1.2
 -------------
@@ -12,7 +16,6 @@ Version 3.1.1
 Version 3.1.0
 -------------
 - ![INFO][badge-info] Recover support for Julia 1.6+. All tests pass from 1.9+, and an allocation test fails in 1.6.
-
 
 Version 3.0.0
 -------------
