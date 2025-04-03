@@ -1,6 +1,10 @@
 ChunkSplitters.jl Changelog
 =========================
 
+Version 3.1.2
+-------------
+- ![ENHANCEMENT][badge-enhancement] Return a single chunk if `minsize > length(collection)`.
+
 Version 3.1.1
 -------------
 - ![BUGFIX][badge-bugfix] Throw an error if `minsize > length(collection)`. Before returned an empty collection of chunks.
