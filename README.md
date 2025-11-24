@@ -1,6 +1,7 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaFolds2.github.io/ChunkSplitters.jl/stable)
 [![Stable](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaFolds2.github.io/ChunkSplitters.jl/dev)
 [![Tests](https://img.shields.io/badge/build-passing-green)](https://github.com/JuliaFolds2/ChunkSplitters.jl/actions)
+[![codecov](https://codecov.io/gh/JuliaFolds2/ChunkSplitters.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaFolds2/ChunkSplitters.jl)
 [![Aqua QA](https://JuliaTesting.github.io/Aqua.jl/dev/assets/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 # ChunkSplitters.jl
