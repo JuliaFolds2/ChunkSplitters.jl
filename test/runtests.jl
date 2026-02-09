@@ -5,28 +5,14 @@ using TestItems: @testitem, @testsnippet
 
 @testsnippet Testing begin
     function test_index_chunks(; array_length, n, size, split, result)
-        if n === nothing
-            d, r = divrem(array_length, size)
-            nchunks = d + (r != 0)
-        elseif size === nothing
-            nchunks = n
-        else
-            throw(ArgumentError("both n and size === nothing"))
-        end
         c = index_chunks(rand(Int, array_length); n=n, size=size, split=split)
+        nchunks = length(c)
         ranges = [c[i] for i in 1:nchunks]
         all(ranges .== result)
     end
 
     function sum_parallel(x, n, size, split, which)
-        if n === nothing
-            d, r = divrem(length(x), size)
-            nchunks = d + (r != 0)
-        elseif size === nothing
-            nchunks = n
-        else
-            throw(ArgumentError("both n and size === nothing"))
-        end
+        nchunks = length(index_chunks(x; n=n, size=size, split=split))
         s = zeros(eltype(x), nchunks)
         if which == "index_chunks"
             Threads.@threads for (ichunk, range) in enumerate(index_chunks(x; n=n, size=size, split=split))
@@ -128,7 +114,17 @@ end
     @test collect.(index_chunks(x; n=3, split=RoundRobin())) == [[-1, 2, 5], [0, 3], [1, 4]]
 
     # FixedSize
-    @test_throws ArgumentError collect(index_chunks(1:10; size=2, split=RoundRobin())) # not supported (yet?)
+    @test collect(index_chunks([1,2,3,4,5,6,7]; size=2, split=RoundRobin())) == [[1,4], [2,5], [3,6], [7]]
+    @test collect(chunks(['a','b','c','d','e','f','g']; size=2, split=RoundRobin())) == [['a','d'], ['b','e'], ['c','f'], ['g']]
+    @test collect(index_chunks(1:7; size=2, split=RoundRobin())) == [1:3:4, 2:3:5, 3:3:6, 7:3:7]
+    @test collect(index_chunks(1:6; size=2, split=RoundRobin())) == [1:3:4, 2:3:5, 3:3:6]
+    @test collect(index_chunks(1:10; size=3, split=RoundRobin())) == [1:3:7, 2:3:8, 3:3:9, 10:3:10]
+    @test collect(index_chunks(1:9; size=3, split=RoundRobin())) == [1:3:7, 2:3:8, 3:3:9]
+    x = OffsetArray(1:7, -1:5)
+    @test collect(index_chunks(x; size=2, split=RoundRobin())) == [-1:3:2, 0:3:3, 1:3:4, 5:3:5]
+    @test test_sum(; array_length=7, n=nothing, size=2, split=RoundRobin())
+    @test test_sum(; array_length=15, n=nothing, size=4, split=RoundRobin())
+    @test test_sum(; array_length=117, n=nothing, size=10, split=RoundRobin())
 end
 
 @testitem "check input argument errors" begin

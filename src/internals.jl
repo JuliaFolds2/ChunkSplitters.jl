@@ -94,7 +94,13 @@ Base.firstindex(::AbstractChunks) = 1
 Base.lastindex(c::AbstractChunks) = length(c)
 
 Base.length(c::AbstractChunks{T,FixedCount,S}) where {T,S} = c.n
-Base.length(c::AbstractChunks{T,FixedSize,S}) where {T,S} = cld(length(c.collection), max(1, c.size))
+Base.length(c::AbstractChunks{T,FixedSize,Consecutive}) where {T} = cld(length(c.collection), max(1, c.size))
+function Base.length(c::AbstractChunks{T,FixedSize,RoundRobin}) where {T}
+    l = length(c.collection)
+    l == 0 && return 0
+    s = min(l, max(1, c.size))
+    return fld(l, s) + rem(l, s)
+end
 
 Base.getindex(c::IndexChunks{T,C,S}, i::Int) where {T,C,S} = getchunkindices(c, i)
 Base.getindex(c::ViewChunks{T,C,S}, i::Int) where {T,C,S} = @view(c.collection[getchunkindices(c, i)])
@@ -158,7 +164,11 @@ function getchunkindices(c::AbstractChunks{T,C,S}, ichunk::Integer) where {T,C,S
             size = c.size
             l = length(c.collection)
             size = min(l, size) # handle size>length(c.collection)
-            n = cld(l, size)
+            if S == Consecutive
+                n = cld(l, size)
+            else # RoundRobin
+                n = fld(l, size) + rem(l, size)
+            end
         end
     else 
         n = 0
@@ -192,7 +202,18 @@ function _getchunkindices(::Type{FixedSize}, ::Type{Consecutive}, collection, ic
 end
 
 function _getchunkindices(::Type{FixedSize}, ::Type{RoundRobin}, collection, ichunk; size, kwargs...)
-    throw(ArgumentError("split=RoundRobin() not yet supported in combination with size keyword argument."))
+    l = length(collection)
+    fi = firstindex(collection)
+    step = fld(l, size)
+    if ichunk <= step
+        first = fi + ichunk - 1
+        last = first + (size - 1) * step
+        return first:step:last
+    else
+        k = ichunk - step
+        pos = fi + step * size + k - 1
+        return pos:step:pos
+    end
 end
 
 end # module

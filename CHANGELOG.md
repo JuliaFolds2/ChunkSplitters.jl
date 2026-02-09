@@ -1,8 +1,9 @@
 ChunkSplitters.jl Changelog
 ===========================
 
-Version 3.1.3-DEV
+Version 3.2.0-DEV
 -------------
+- ![FEATURE][badge-feature] Implement `size` option for `split=RoundRobin()`.
 - ![INFO][badge-info] Improve documentation of multithreading by adding `index_chunks` examples.
 
 Version 3.1.2
