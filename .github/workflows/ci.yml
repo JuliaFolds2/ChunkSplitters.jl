@@ -12,7 +12,6 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6' # remove at some point in the future, if needed.
           - 'lts' # currently 1.10
           - '1' # latest stable 1.x release
           - 'pre'
@@ -20,9 +19,6 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-        exclude:
-          - version: '1.6'
-            os: macOS-latest
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
