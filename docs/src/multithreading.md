@@ -25,7 +25,6 @@ true
 julia> using BenchmarkTools
 
 julia> @btime sum(x -> log(x)^7, $x);
-
   938.583 μs (0 allocations: 0 bytes)
 
 julia> @btime parallel_sum(x -> log(x)^7, $x; n=Threads.nthreads());
