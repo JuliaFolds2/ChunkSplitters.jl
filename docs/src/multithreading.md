@@ -32,6 +32,27 @@ julia> @btime parallel_sum(x -> log(x)^7, $x; n=Threads.nthreads());
   321.083 μs (44 allocations: 3.42 KiB)
 ```
 
+Equivalently, we can use `index_chunks` to iterate over the *index ranges* (instead of the elements) and manually create views:
+
+```julia-repl
+julia> using ChunkSplitters: index_chunks
+
+julia> using Base.Threads: nthreads, @spawn
+
+julia> function parallel_sum(f, x; n=nthreads())
+           tasks = map(index_chunks(x; n=n)) do inds
+               @spawn sum(f, @view(x[inds]))
+           end
+           return sum(fetch, tasks)
+       end
+parallel_sum (generic function with 1 method)
+
+julia> x = rand(10^5);
+
+julia> parallel_sum(identity, x) ≈ sum(identity, x) # true
+true
+```
+
 Note that by chunking `x` we can readily control how many tasks we will use for the parallelisation. One reason why this is useful is that we can reduce the (large) overhead that we would have to pay if we would simply spawn `length(x)` tasks:
 
 ```julia-repl
@@ -80,6 +101,28 @@ julia> @btime sum(x -> log(x)^7, $x);
 
 julia> @btime parallel_sum(x -> log(x)^7, $x; n=Threads.nthreads());
   319.000 μs (35 allocations: 3.42 KiB)
+```
+
+Alternatively, we can use `index_chunks` instead of `enumerate(chunks(...))`. Since `index_chunks` directly provides index ranges, it is a natural fit for this use case:
+
+```julia-repl
+julia> using ChunkSplitters: index_chunks
+
+julia> using Base.Threads: nthreads, @threads
+
+julia> function parallel_sum(f, x; n=nthreads())
+           psums = Vector{eltype(x)}(undef, n)
+           @threads for (i, inds) in enumerate(index_chunks(x; n=n))
+               psums[i] = sum(f, @view(x[inds]))
+           end
+           return sum(psums)
+       end
+parallel_sum (generic function with 1 method)
+
+julia> x = rand(10^5);
+
+julia> parallel_sum(identity, x) ≈ sum(identity, x) # true
+true
 ```
 
 However, the fact that this works is that we actively support it. In general, `@threads` isn't compatible with `enumerate`:
